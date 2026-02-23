@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Voyagr</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--a:#38BDF8;--a2:#FB923C;--g:#34D399;--pk:#F472B6;--y:#FBBF24;--bg:rgba(9,13,24,0.93);--br:rgba(255,255,255,0.10)}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:#0a0f1e;color:#fff;user-select:none}
+
+/* MAP */
+#leafmap{position:fixed;inset:0;z-index:0}
+.leaflet-control-zoom,.leaflet-control-attribution{display:none!important}
+
+/* STATUS */
+#sbar{position:fixed;top:0;left:0;right:0;height:48px;z-index:400;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(to bottom,rgba(8,12,22,0.85),transparent);pointer-events:none}
+.stime{font-size:14px;font-weight:700;font-family:'Sora',sans-serif}
+.sicons{font-size:11px;opacity:0.75}
+
+/* DAY BAR */
+#daybar{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:300;display:flex;align-items:center;background:rgba(14,20,38,0.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.14);border-radius:50px;padding:5px 6px;min-width:180px;box-shadow:0 4px 20px rgba(0,0,0,0.4)}
+.darrow{width:32px;height:32px;border-radius:50%;border:none;background:transparent;color:rgba(255,255,255,0.4);font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;outline:none}
+.darrow:hover:not(:disabled){background:rgba(255,255,255,0.12);color:#fff}
+.darrow:disabled{opacity:0.18;pointer-events:none}
+#dlabel{flex:1;text-align:center;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 4px;white-space:nowrap}
+.ddot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background 0.25s}
+
+/* LAYER TOGGLE */
+#ltoggle{position:fixed;top:54px;right:14px;z-index:300;display:flex;flex-direction:column;gap:5px}
+.lbtn{width:44px;height:44px;border-radius:13px;border:1.5px solid rgba(255,255,255,0.18);background:rgba(14,20,38,0.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all 0.18s;color:rgba(255,255,255,0.6);box-shadow:0 3px 14px rgba(0,0,0,0.4)}
+.lbtn:hover{border-color:var(--a);color:#fff}
+.lbtn.on{border-color:var(--a);background:rgba(56,189,248,0.18);color:var(--a)}
+.lico{font-size:16px;line-height:1}
+.ltxt{font-size:7px;font-family:'Sora',sans-serif;font-weight:700;letter-spacing:0.3px;text-transform:uppercase}
+
+/* BOTTOM SHEET */
+#bsheet{position:fixed;left:0;right:0;bottom:0;z-index:200;border-radius:22px 22px 0 0;background:var(--bg);backdrop-filter:blur(32px) saturate(180%);-webkit-backdrop-filter:blur(32px) saturate(180%);border-top:1px solid var(--br);display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.5);will-change:transform;transition:transform 0.35s cubic-bezier(0.32,0.72,0,1)}
+#bsheet.notr{transition:none!important}
+#shandle{padding:10px 0 0;display:flex;flex-direction:column;align-items:center;cursor:ns-resize;flex-shrink:0;touch-action:none}
+.spill{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,0.25)}
+.shint{font-size:8px;color:rgba(255,255,255,0.2);font-family:'Sora',sans-serif;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-top:4px}
+#srow{display:flex;align-items:center;gap:10px;padding:10px 16px 8px;flex-shrink:0}
+.spill-bar{flex:1;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.14);border-radius:50px;padding:10px 16px;cursor:pointer;transition:all 0.2s}
+.spill-bar:hover{background:rgba(255,255,255,0.14)}
+.sico{font-size:15px;opacity:0.5}
+.sph{font-size:14px;color:rgba(255,255,255,0.45);font-family:'Sora',sans-serif;flex:1}
+.ava{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#7C3AED);border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0}
+#scontent{overflow-y:auto;flex:1;scrollbar-width:none;padding:0 0 32px;overscroll-behavior:contain}
+#scontent::-webkit-scrollbar{display:none}
+.slabel{font-family:'Sora',sans-serif;font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:1px;text-transform:uppercase;padding:14px 16px 8px}
+.hrow{display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none}
+.hrow::-webkit-scrollbar{display:none}
+.rchip{display:flex;align-items:center;gap:7px;flex-shrink:0;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:8px 14px;cursor:pointer;transition:all 0.18s;font-size:13px;font-weight:500;white-space:nowrap}
+.rchip:hover{background:rgba(255,255,255,0.14)}
+.dcard{flex-shrink:0;width:136px;height:96px;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:transform 0.2s}
+.dcard:hover{transform:scale(1.04)}
+.dcbg{position:absolute;inset:0;background-size:cover;background-position:center}
+.dcov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72) 0%,transparent 55%)}
+.dcname{position:absolute;bottom:7px;left:9px;font-family:'Sora',sans-serif;font-size:12px;font-weight:700}
+.tcard{flex-shrink:0;width:155px;height:108px;border-radius:18px;background:rgba(255,255,255,0.06);border:1.5px dashed rgba(255,255,255,0.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all 0.2s;font-family:'Sora',sans-serif}
+.tcard:hover{background:rgba(56,189,248,0.08);border-color:rgba(56,189,248,0.4)}
+.tcplus{font-size:26px;color:rgba(255,255,255,0.3)}
+.tclabel{font-size:11px;color:rgba(255,255,255,0.4);text-align:center;font-weight:600;line-height:1.4}
+.topc{flex-shrink:0;width:148px;height:103px;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;transition:transform 0.2s}
+.topc:hover{transform:scale(1.04)}
+.tbadge{position:absolute;top:7px;left:7px;background:rgba(0,0,0,0.55);backdrop-filter:blur(8px);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--y);font-family:'Sora',sans-serif}
+
+/* TRIP INFO BAR (shown when trip active) */
+#tripbar{position:fixed;bottom:0;left:0;right:0;z-index:199;background:rgba(9,13,24,0.94);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.1);padding:14px 18px 30px;display:none;flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+#tripbar.show{display:flex}
+.tbdest{font-family:'Sora',sans-serif;font-size:17px;font-weight:800}
+.tbdates{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
+.tbopen{background:linear-gradient(135deg,var(--a),#7C3AED);border:none;border-radius:50px;padding:9px 18px;color:#fff;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+
+/* SEARCH OVERLAY */
+#sovl{position:fixed;inset:0;z-index:500;background:rgba(7,10,20,0.97);backdrop-filter:blur(20px);display:none;flex-direction:column;padding-top:52px}
+#sovl.open{display:flex}
+.sovhdr{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.sovback{font-size:13px;color:var(--a);font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;white-space:nowrap}
+.sovinwrap{flex:1;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:11px 14px}
+.sovinput{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:16px;font-family:'Sora',sans-serif}
+.sovinput::placeholder{color:rgba(255,255,255,0.3)}
+.sresults{overflow-y:auto;flex:1;padding:8px 12px 40px;scrollbar-width:none;display:flex;flex-direction:column;gap:6px}
+.sresults::-webkit-scrollbar{display:none}
+.sitem{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all 0.16s}
+.sitem:hover{background:rgba(56,189,248,0.1);border-color:rgba(56,189,248,0.3)}
+.sflag{font-size:22px;width:38px;text-align:center;flex-shrink:0}
+.sname{font-family:'Sora',sans-serif;font-size:14px;font-weight:600}
+.ssub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
+
+/* PLAN SCREEN */
+#planscr{position:fixed;inset:0;z-index:600;background:rgba(7,10,20,0.99);display:none;flex-direction:column;overflow-y:auto;scrollbar-width:none}
+#planscr.open{display:flex}
+#planscr::-webkit-scrollbar{display:none}
+.plhdr{padding:58px 20px 16px}
+.plback{font-size:13px;color:var(--a);cursor:pointer;font-weight:700;font-family:'Sora',sans-serif;display:inline-flex;align-items:center;gap:5px;margin-bottom:14px}
+.plname{font-family:'Sora',sans-serif;font-size:28px;font-weight:800;background:linear-gradient(125deg,#fff 55%,var(--a));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.plsub{font-size:13px;color:rgba(255,255,255,0.38);margin-top:3px}
+.plbody{padding:4px 20px 120px;display:flex;flex-direction:column;gap:22px}
+.plsec{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin-bottom:10px}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ibox{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 14px;cursor:pointer;transition:all 0.18s}
+.ibox:hover{border-color:rgba(56,189,248,0.5);background:rgba(56,189,248,0.06)}
+.ilbl{font-size:10px;color:rgba(255,255,255,0.38);font-weight:700;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:4px;font-family:'Sora',sans-serif}
+.ival{font-size:14px;font-weight:500;color:rgba(255,255,255,0.85)}
+.ival.ph{color:rgba(255,255,255,0.28)}
+.budrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.budbox{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.budbox input{background:transparent;border:none;outline:none;color:#fff;font-size:17px;font-weight:700;font-family:'Sora',sans-serif;width:100%}
+.budbox input::placeholder{color:rgba(255,255,255,0.2);font-weight:400;font-size:14px}
+.chkwrap{display:flex;flex-wrap:wrap;gap:8px}
+.cchip{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.11);border-radius:50px;padding:8px 14px;cursor:pointer;transition:all 0.18s;font-size:12px;font-weight:600}
+.cchip.on{background:rgba(56,189,248,0.14);border-color:rgba(56,189,248,0.55);color:var(--a)}
+.cbox{width:15px;height:15px;border-radius:4px;border:1.5px solid rgba(255,255,255,0.28);display:flex;align-items:center;justify-content:center;font-size:9px;transition:all 0.15s}
+.cchip.on .cbox{background:var(--a);border-color:var(--a);color:#000}
+#buildbtn{position:fixed;bottom:30px;left:20px;right:20px;background:linear-gradient(135deg,#38BDF8,#7C3AED);border:none;border-radius:18px;padding:17px;color:#fff;font-family:'Sora',sans-serif;font-size:15px;font-weight:800;cursor:pointer;z-index:700;display:none;box-shadow:0 8px 32px rgba(56,189,248,0.35);letter-spacing:0.3px;transition:transform 0.15s,box-shadow 0.15s}
+#buildbtn.show{display:block}
+#buildbtn:hover{transform:translateY(-2px)}
+
+/* ITIN PANEL */
+#ipanel{position:fixed;left:0;right:0;bottom:0;z-index:250;border-radius:22px 22px 0 0;background:rgba(9,13,24,0.95);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);border-top:1px solid rgba(255,255,255,0.1);display:none;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.6);will-change:transform;transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);max-height:88vh}
+#ipanel.show{display:flex}
+#ipanel.notr{transition:none!important}
+#ihandle{padding:10px 0 0;display:flex;flex-direction:column;align-items:center;cursor:ns-resize;flex-shrink:0;touch-action:none}
+.ipipill{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.22);margin-bottom:4px}
+.isum{padding:6px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.icity{font-family:'Sora',sans-serif;font-size:19px;font-weight:800}
+.idates{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
+.istat{text-align:right}
+.inum{font-family:'Sora',sans-serif;font-size:21px;font-weight:800;color:var(--a)}
+.inumlbl{font-size:10px;color:rgba(255,255,255,0.38)}
+#ipills{display:flex;gap:7px;overflow-x:auto;padding:0 18px 10px;scrollbar-width:none;flex-shrink:0}
+#ipills::-webkit-scrollbar{display:none}
+.ipill{flex-shrink:0;padding:5px 14px;border-radius:50px;font-family:'Sora',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.18s;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.45)}
+#ievents{overflow-y:auto;flex:1;scrollbar-width:none;padding:0 18px 40px}
+#ievents::-webkit-scrollbar{display:none}
+.iev{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05);animation:fup 0.3s ease both}
+@keyframes fup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.etime{min-width:50px;text-align:right;font-family:'Sora',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);padding-top:2px}
+.espine{display:flex;flex-direction:column;align-items:center;padding-top:3px}
+.edot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:2px solid}
+.eline{flex:1;width:1px;background:rgba(255,255,255,0.08);min-height:28px}
+.einfo{flex:1}
+.ename{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px}
+.edesc{font-size:11px;color:rgba(255,255,255,0.42);line-height:1.45}
+.etag{display:inline-block;margin-top:4px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;font-family:'Sora',sans-serif;letter-spacing:0.4px}
+
+/* DATE MODAL */
+#dmodal{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.75);display:none;align-items:flex-end;backdrop-filter:blur(6px)}
+#dmodal.open{display:flex}
+.dsheet{width:100%;background:#0f1628;border-radius:22px 22px 0 0;padding:18px 20px 38px;border-top:1px solid rgba(255,255,255,0.1)}
+.dtitle{font-family:'Sora',sans-serif;font-size:17px;font-weight:700;text-align:center;margin-bottom:14px}
+.mnavrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mnavbtn{background:rgba(255,255,255,0.08);border:none;border-radius:50%;width:30px;height:30px;color:#fff;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.mlbl{font-family:'Sora',sans-serif;font-weight:700;font-size:14px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.caldh{font-size:10px;text-align:center;color:rgba(255,255,255,0.3);font-weight:700;font-family:'Sora',sans-serif;padding:3px 0}
+.cald{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:12px;cursor:pointer;transition:all 0.14s;font-family:'Sora',sans-serif}
+.cald:hover{background:rgba(255,255,255,0.1)}
+.cald.sel{background:var(--a);color:#000;font-weight:700}
+.cald.dis{opacity:0.22;pointer-events:none}
+.dconfirm{width:100%;background:linear-gradient(135deg,#38BDF8,#7C3AED);border:none;border-radius:14px;padding:13px;color:#fff;font-family:'Sora',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px}
+
+/* LOADING */
+#loader{position:fixed;inset:0;z-index:900;background:rgba(7,10,20,0.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;backdrop-filter:blur(12px)}
+#loader.show{display:flex}
+.sring{width:56px;height:56px;border:3px solid rgba(255,255,255,0.08);border-top-color:var(--a);border-radius:50%;animation:spin 0.85s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltxt1{font-family:'Sora',sans-serif;font-size:15px;color:rgba(255,255,255,0.65)}
+.ltxt2{font-size:12px;color:rgba(255,255,255,0.3)}
+
+/* Leaflet popup */
+.leaflet-popup-content-wrapper{background:rgba(14,20,38,0.97)!important;border:1px solid rgba(56,189,248,0.3)!important;border-radius:14px!important;color:#fff!important;font-family:'DM Sans',sans-serif!important;padding:0!important;box-shadow:0 8px 30px rgba(0,0,0,0.5)!important}
+.leaflet-popup-content{margin:12px 16px!important;font-size:13px!important}
+.leaflet-popup-tip-container{display:none}
+.leaflet-popup-close-button{color:rgba(255,255,255,0.5)!important;top:6px!important;right:8px!important}
+</style>
+</head>
+<body>
+
+<div id="sbar">
+  <span class="stime" id="clockel">9:41</span>
+  <span class="sicons">▲▲▲ WiFi 🔋</span>
+</div>
+
+<div id="leafmap"></div>
+
+<div id="daybar">
+  <button class="darrow" id="dprev" onclick="shiftDay(-1)">‹</button>
+  <div id="dlabel">
+    <span class="ddot" id="ddot" style="background:#38BDF8"></span>
+    <span id="dtxt">Day 1</span>
+  </div>
+  <button class="darrow" id="dnext" onclick="shiftDay(1)">›</button>
+</div>
+
+<div id="ltoggle">
+  <button class="lbtn on" id="lmap" onclick="switchLayer('map')"><span class="lico">🗺️</span><span class="ltxt">Map</span></button>
+  <button class="lbtn" id="lsat"  onclick="switchLayer('sat')"><span class="lico">🛰️</span><span class="ltxt">Sat</span></button>
+  <button class="lbtn" id="ltr"   onclick="switchLayer('tr')"><span class="lico">🚇</span><span class="ltxt">Transit</span></button>
+</div>
+
+<!-- BOTTOM SHEET (home, always visible) -->
+<div id="bsheet">
+  <div id="shandle">
+    <div class="spill"></div>
+    <div class="shint">hold &amp; drag</div>
+  </div>
+  <div id="srow">
+    <div class="spill-bar" onclick="openSearch()">
+      <span class="sico">🔍</span>
+      <span class="sph">Where do you want to go?</span>
+    </div>
+    <div class="ava">👤</div>
+  </div>
+  <div id="scontent">
+    <div class="slabel">Recently Viewed</div>
+    <div class="hrow">
+      <div class="rchip" onclick="quickDest('Paris','🗼')">🗼 Paris</div>
+      <div class="rchip" onclick="quickDest('Tokyo','🏯')">🏯 Tokyo</div>
+      <div class="rchip" onclick="quickDest('New York','🗽')">🗽 New York</div>
+      <div class="rchip" onclick="quickDest('Bali','🌴')">🌴 Bali</div>
+      <div class="rchip" onclick="quickDest('Dubai','🏙️')">🏙️ Dubai</div>
+      <div class="rchip" onclick="quickDest('London','👑')">👑 London</div>
+    </div>
+    <div class="slabel">Suggested For You</div>
+    <div class="hrow">
+      <div class="dcard" onclick="quickDest('Miami','🌊')"><div class="dcbg" style="background:linear-gradient(135deg,#0277BD,#26C6DA,#F48FB1)"></div><div class="dcov"></div><div class="dcname">Miami</div></div>
+      <div class="dcard" onclick="quickDest('London','👑')"><div class="dcbg" style="background:linear-gradient(135deg,#263238,#455A64,#90A4AE)"></div><div class="dcov"></div><div class="dcname">London</div></div>
+      <div class="dcard" onclick="quickDest('Los Angeles','🎬')"><div class="dcbg" style="background:linear-gradient(135deg,#E65100,#FF8F00,#FFF59D)"></div><div class="dcov"></div><div class="dcname">Los Angeles</div></div>
+      <div class="dcard" onclick="quickDest('Tokyo','🏯')"><div class="dcbg" style="background:linear-gradient(135deg,#880E4F,#E91E63,#FFCCBC)"></div><div class="dcov"></div><div class="dcname">Tokyo</div></div>
+      <div class="dcard" onclick="quickDest('Paris','🗼')"><div class="dcbg" style="background:linear-gradient(135deg,#1A237E,#3949AB,#90CAF9)"></div><div class="dcov"></div><div class="dcname">Paris</div></div>
+      <div class="dcard" onclick="quickDest('Dubai','🏙️')"><div class="dcbg" style="background:linear-gradient(135deg,#BF360C,#FF7043,#FFE0B2)"></div><div class="dcov"></div><div class="dcname">Dubai</div></div>
+    </div>
+    <div class="slabel">Trips</div>
+    <div class="hrow">
+      <div class="tcard" onclick="openSearch()">
+        <div class="tcplus">＋</div>
+        <div class="tclabel">Start your<br>first trip</div>
+      </div>
+    </div>
+    <div class="slabel">Top Rated</div>
+    <div class="hrow">
+      <div class="topc" onclick="quickDest('Santorini','🏛️')"><div class="dcbg" style="background:linear-gradient(135deg,#0D47A1,#1E88E5,#E3F2FD);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.9</div><div class="dcname">Santorini</div></div>
+      <div class="topc" onclick="quickDest('Kyoto','⛩️')"><div class="dcbg" style="background:linear-gradient(135deg,#880E4F,#D81B60,#FFCCBC);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.8</div><div class="dcname">Kyoto</div></div>
+      <div class="topc" onclick="quickDest('Maldives','🏝️')"><div class="dcbg" style="background:linear-gradient(135deg,#004D40,#00ACC1,#B2EBF2);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.9</div><div class="dcname">Maldives</div></div>
+      <div class="topc" onclick="quickDest('Bali','🌴')"><div class="dcbg" style="background:linear-gradient(135deg,#33691E,#7CB342,#DCEDC8);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.8</div><div class="dcname">Bali</div></div>
+      <div class="topc" onclick="quickDest('New York','🗽')"><div class="dcbg" style="background:linear-gradient(135deg,#212121,#616161,#B0BEC5);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.7</div><div class="dcname">New York</div></div>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- TRIP BAR (during trip) -->
+<div id="tripbar">
+  <div>
+    <div class="tbdest" id="tbdest">Miami</div>
+    <div class="tbdates" id="tbdates">Mar 10 – Mar 15</div>
+  </div>
+  <button class="tbopen" onclick="openIPanel()">View Itinerary ↑</button>
+</div>
+
+<!-- SEARCH OVERLAY -->
+<div id="sovl">
+  <div class="sovhdr">
+    <button class="sovback" onclick="closeSearch()">← Cancel</button>
+    <div class="sovinwrap">
+      <span style="font-size:15px;opacity:0.4">🔍</span>
+      <input class="sovinput" id="sinput" placeholder="Search any destination..." autocomplete="off"/>
+    </div>
+  </div>
+  <div class="sresults" id="sresults"></div>
+</div>
+
+<!-- PLAN SCREEN -->
+<div id="planscr">
+  <div class="plhdr">
+    <div class="plback" onclick="closePlan()">← Back</div>
+    <div class="plname" id="plname">Miami</div>
+    <div class="plsub">Plan your perfect trip ✈️</div>
+  </div>
+  <div class="plbody">
+    <div>
+      <div class="plsec">📅 Dates</div>
+      <div class="twocol">
+        <div class="ibox" onclick="openDateModal('arr')"><div class="ilbl">Arrival</div><div class="ival ph" id="arrval">Select date</div></div>
+        <div class="ibox" onclick="openDateModal('dep')"><div class="ilbl">Departure</div><div class="ival ph" id="depval">Select date</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="plsec">💰 Budget</div>
+      <div class="budrow">
+        <div class="budbox"><div class="ilbl">Minimum</div><input type="number" id="budmin" placeholder="$500"/></div>
+        <div class="budbox"><div class="ilbl">Maximum</div><input type="number" id="budmax" placeholder="$3,000"/></div>
+      </div>
+    </div>
+    <div>
+      <div class="plsec">✨ Preferences</div>
+      <div class="chkwrap">
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Family Friendly</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Deals</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Free Cancellation</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>New</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Luxury</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Adventure</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Beach</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Foodie</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Solo</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Romantic</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Cultural</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Budget Travel</div>
+      </div>
+    </div>
+    <div style="height:80px"></div>
+  </div>
+</div>
+<button id="buildbtn" onclick="startBuild()">✈️ Build My Itinerary</button>
+
+<!-- DATE MODAL -->
+<div id="dmodal">
+  <div class="dsheet">
+    <div class="dtitle" id="dtitle">Select Date</div>
+    <div class="mnavrow">
+      <button class="mnavbtn" onclick="changeMonth(-1)">‹</button>
+      <span class="mlbl" id="mlbl"></span>
+      <button class="mnavbtn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="calgrid" id="calgrid"></div>
+    <button class="dconfirm" onclick="confirmDate()">Confirm</button>
+  </div>
+</div>
+
+<!-- ITIN PANEL -->
+<div id="ipanel">
+  <div id="ihandle"><div class="ipipill"></div></div>
+  <div class="isum">
+    <div><div class="icity" id="icity"></div><div class="idates" id="idates"></div></div>
+    <div class="istat"><div class="inum" id="inum"></div><div class="inumlbl">Days</div></div>
+  </div>
+  <div id="ipills"></div>
+  <div id="ievents"></div>
+</div>
+
+<!-- LOADING -->
+<div id="loader">
+  <div class="sring"></div>
+  <div class="ltxt1">Building your itinerary...</div>
+  <div class="ltxt2">Curating the best experiences</div>
+</div>
+
+<script>
+// ── ALL DESTINATIONS ──
+var DESTS = [
+  {n:'New York',s:'New York, USA',f:'🗽',la:40.7128,lo:-74.006},
+  {n:'Los Angeles',s:'California, USA',f:'🎬',la:34.0522,lo:-118.2437},
+  {n:'Miami',s:'Florida, USA',f:'🌊',la:25.7617,lo:-80.1918},
+  {n:'Chicago',s:'Illinois, USA',f:'🌆',la:41.8781,lo:-87.6298},
+  {n:'Las Vegas',s:'Nevada, USA',f:'🎰',la:36.1699,lo:-115.1398},
+  {n:'San Francisco',s:'California, USA',f:'🌉',la:37.7749,lo:-122.4194},
+  {n:'Seattle',s:'Washington, USA',f:'☕',la:47.6062,lo:-122.3321},
+  {n:'New Orleans',s:'Louisiana, USA',f:'🎺',la:29.9511,lo:-90.0715},
+  {n:'Washington DC',s:'USA',f:'🏛️',la:38.9072,lo:-77.0369},
+  {n:'Boston',s:'Massachusetts, USA',f:'🦞',la:42.3601,lo:-71.0589},
+  {n:'Nashville',s:'Tennessee, USA',f:'🎸',la:36.1627,lo:-86.7816},
+  {n:'Austin',s:'Texas, USA',f:'🤠',la:30.2672,lo:-97.7431},
+  {n:'Denver',s:'Colorado, USA',f:'⛰️',la:39.7392,lo:-104.9903},
+  {n:'Hawaii',s:'Hawaii, USA',f:'🌺',la:21.3069,lo:-157.8583},
+  {n:'Toronto',s:'Canada',f:'🍁',la:43.6532,lo:-79.3832},
+  {n:'Vancouver',s:'BC, Canada',f:'🏔️',la:49.2827,lo:-123.1207},
+  {n:'Montreal',s:'Quebec, Canada',f:'🥐',la:45.5017,lo:-73.5673},
+  {n:'Cancún',s:'Mexico',f:'🏖️',la:21.1619,lo:-86.8515},
+  {n:'Mexico City',s:'Mexico',f:'🌮',la:19.4326,lo:-99.1332},
+  {n:'Havana',s:'Cuba',f:'🕺',la:23.1136,lo:-82.3666},
+  {n:'Costa Rica',s:'Central America',f:'🌿',la:9.9281,lo:-84.0907},
+  {n:'Panama City',s:'Panama',f:'🚢',la:8.9936,lo:-79.5197},
+  {n:'Bogotá',s:'Colombia',f:'🌸',la:4.7110,lo:-74.0721},
+  {n:'Medellín',s:'Colombia',f:'🌺',la:6.2442,lo:-75.5812},
+  {n:'Cartagena',s:'Colombia',f:'🏰',la:10.3910,lo:-75.4794},
+  {n:'Rio de Janeiro',s:'Brazil',f:'🎭',la:-22.9068,lo:-43.1729},
+  {n:'São Paulo',s:'Brazil',f:'🌇',la:-23.5505,lo:-46.6333},
+  {n:'Buenos Aires',s:'Argentina',f:'💃',la:-34.6037,lo:-58.3816},
+  {n:'Lima',s:'Peru',f:'🦙',la:-12.0464,lo:-77.0428},
+  {n:'Cusco',s:'Peru',f:'🏔️',la:-13.5320,lo:-71.9675},
+  {n:'Santiago',s:'Chile',f:'🍷',la:-33.4489,lo:-70.6693},
+  {n:'Machu Picchu',s:'Peru',f:'🗿',la:-13.1631,lo:-72.5450},
+  {n:'Galapagos',s:'Ecuador',f:'🐢',la:-0.9537,lo:-90.9656},
+  {n:'London',s:'England, UK',f:'👑',la:51.5074,lo:-0.1278},
+  {n:'Paris',s:'France',f:'🗼',la:48.8566,lo:2.3522},
+  {n:'Rome',s:'Italy',f:'🏛️',la:41.9028,lo:12.4964},
+  {n:'Barcelona',s:'Spain',f:'🎨',la:41.3851,lo:2.1734},
+  {n:'Madrid',s:'Spain',f:'💃',la:40.4168,lo:-3.7038},
+  {n:'Amsterdam',s:'Netherlands',f:'🚲',la:52.3676,lo:4.9041},
+  {n:'Berlin',s:'Germany',f:'🏰',la:52.5200,lo:13.4050},
+  {n:'Vienna',s:'Austria',f:'🎻',la:48.2082,lo:16.3738},
+  {n:'Prague',s:'Czech Republic',f:'🍺',la:50.0755,lo:14.4378},
+  {n:'Budapest',s:'Hungary',f:'♨️',la:47.4979,lo:19.0402},
+  {n:'Warsaw',s:'Poland',f:'🥟',la:52.2297,lo:21.0122},
+  {n:'Lisbon',s:'Portugal',f:'🏄',la:38.7223,lo:-9.1393},
+  {n:'Porto',s:'Portugal',f:'🍷',la:41.1579,lo:-8.6291},
+  {n:'Edinburgh',s:'Scotland, UK',f:'🏴',la:55.9533,lo:-3.1883},
+  {n:'Dublin',s:'Ireland',f:'🍀',la:53.3498,lo:-6.2603},
+  {n:'Zurich',s:'Switzerland',f:'🧀',la:47.3769,lo:8.5417},
+  {n:'Brussels',s:'Belgium',f:'🍫',la:50.8503,lo:4.3517},
+  {n:'Copenhagen',s:'Denmark',f:'🧜',la:55.6761,lo:12.5683},
+  {n:'Stockholm',s:'Sweden',f:'🦌',la:59.3293,lo:18.0686},
+  {n:'Oslo',s:'Norway',f:'🎿',la:59.9139,lo:10.7522},
+  {n:'Helsinki',s:'Finland',f:'🧖',la:60.1699,lo:24.9384},
+  {n:'Reykjavik',s:'Iceland',f:'🌋',la:64.1466,lo:-21.9426},
+  {n:'Santorini',s:'Greece',f:'🏛️',la:36.3932,lo:25.4615},
+  {n:'Athens',s:'Greece',f:'🏺',la:37.9838,lo:23.7275},
+  {n:'Mykonos',s:'Greece',f:'🌊',la:37.4467,lo:25.3289},
+  {n:'Amalfi Coast',s:'Italy',f:'🍋',la:40.6340,lo:14.6027},
+  {n:'Venice',s:'Italy',f:'🚤',la:45.4408,lo:12.3155},
+  {n:'Florence',s:'Italy',f:'🎨',la:43.7696,lo:11.2558},
+  {n:'Milan',s:'Italy',f:'👗',la:45.4654,lo:9.1859},
+  {n:'Nice',s:'France',f:'🌊',la:43.7102,lo:7.2620},
+  {n:'Monaco',s:'Monaco',f:'🏎️',la:43.7384,lo:7.4246},
+  {n:'Dubrovnik',s:'Croatia',f:'🏰',la:42.6507,lo:18.0944},
+  {n:'Seville',s:'Spain',f:'🌹',la:37.3891,lo:-5.9845},
+  {n:'Bruges',s:'Belgium',f:'🍺',la:51.2093,lo:3.2247},
+  {n:'Tallinn',s:'Estonia',f:'🏰',la:59.4370,lo:24.7536},
+  {n:'Krakow',s:'Poland',f:'🏰',la:50.0647,lo:19.9450},
+  {n:'Tokyo',s:'Japan',f:'🏯',la:35.6762,lo:139.6503},
+  {n:'Kyoto',s:'Japan',f:'⛩️',la:35.0116,lo:135.7681},
+  {n:'Osaka',s:'Japan',f:'🦀',la:34.6937,lo:135.5023},
+  {n:'Seoul',s:'South Korea',f:'🎎',la:37.5665,lo:126.9780},
+  {n:'Beijing',s:'China',f:'🐉',la:39.9042,lo:116.4074},
+  {n:'Shanghai',s:'China',f:'🌃',la:31.2304,lo:121.4737},
+  {n:'Hong Kong',s:'China',f:'🏙️',la:22.3193,lo:114.1694},
+  {n:'Singapore',s:'Singapore',f:'🦁',la:1.3521,lo:103.8198},
+  {n:'Bangkok',s:'Thailand',f:'🛺',la:13.7563,lo:100.5018},
+  {n:'Chiang Mai',s:'Thailand',f:'🐘',la:18.7883,lo:98.9853},
+  {n:'Bali',s:'Indonesia',f:'🌴',la:-8.3405,lo:115.0920},
+  {n:'Phuket',s:'Thailand',f:'🏖️',la:7.8804,lo:98.3923},
+  {n:'Hanoi',s:'Vietnam',f:'🛵',la:21.0285,lo:105.8542},
+  {n:'Ho Chi Minh City',s:'Vietnam',f:'🍜',la:10.8231,lo:106.6297},
+  {n:'Hoi An',s:'Vietnam',f:'🏮',la:15.8801,lo:108.3380},
+  {n:'Siem Reap',s:'Cambodia',f:'🏯',la:13.3671,lo:103.8448},
+  {n:'Kuala Lumpur',s:'Malaysia',f:'🌆',la:3.1390,lo:101.6869},
+  {n:'Manila',s:'Philippines',f:'🌺',la:14.5995,lo:120.9842},
+  {n:'Boracay',s:'Philippines',f:'🏝️',la:11.9674,lo:121.9248},
+  {n:'Taipei',s:'Taiwan',f:'🧋',la:25.0330,lo:121.5654},
+  {n:'Kathmandu',s:'Nepal',f:'🏔️',la:27.7172,lo:85.3240},
+  {n:'Colombo',s:'Sri Lanka',f:'🍵',la:6.9271,lo:79.8612},
+  {n:'Delhi',s:'India',f:'🕌',la:28.7041,lo:77.1025},
+  {n:'Mumbai',s:'India',f:'🎬',la:19.0760,lo:72.8777},
+  {n:'Goa',s:'India',f:'🏖️',la:15.2993,lo:74.1240},
+  {n:'Jaipur',s:'India',f:'🏰',la:26.9124,lo:75.7873},
+  {n:'Maldives',s:'Indian Ocean',f:'🏝️',la:3.2028,lo:73.2207},
+  {n:'Dubai',s:'UAE',f:'🏙️',la:25.2048,lo:55.2708},
+  {n:'Abu Dhabi',s:'UAE',f:'🕌',la:24.4539,lo:54.3773},
+  {n:'Doha',s:'Qatar',f:'⚽',la:25.2854,lo:51.5310},
+  {n:'Tel Aviv',s:'Israel',f:'🏖️',la:32.0853,lo:34.7818},
+  {n:'Istanbul',s:'Turkey',f:'🕌',la:41.0082,lo:28.9784},
+  {n:'Cappadocia',s:'Turkey',f:'🎈',la:38.6431,lo:34.8289},
+  {n:'Tbilisi',s:'Georgia',f:'🍷',la:41.7151,lo:44.8271},
+  {n:'Cairo',s:'Egypt',f:'🏺',la:30.0444,lo:31.2357},
+  {n:'Marrakech',s:'Morocco',f:'🕌',la:31.6295,lo:-7.9811},
+  {n:'Cape Town',s:'South Africa',f:'🦁',la:-33.9249,lo:18.4241},
+  {n:'Nairobi',s:'Kenya',f:'🦒',la:-1.2921,lo:36.8219},
+  {n:'Zanzibar',s:'Tanzania',f:'🏝️',la:-6.1659,lo:39.2026},
+  {n:'Serengeti',s:'Tanzania',f:'🦁',la:-2.3333,lo:34.8333},
+  {n:'Seychelles',s:'Indian Ocean',f:'🐢',la:-4.6796,lo:55.4920},
+  {n:'Mauritius',s:'Indian Ocean',f:'🏝️',la:-20.3484,lo:57.5522},
+  {n:'Sydney',s:'Australia',f:'🦘',la:-33.8688,lo:151.2093},
+  {n:'Melbourne',s:'Australia',f:'☕',la:-37.8136,lo:144.9631},
+  {n:'Auckland',s:'New Zealand',f:'🌿',la:-36.8509,lo:174.7645},
+  {n:'Queenstown',s:'New Zealand',f:'🎿',la:-45.0312,lo:168.6626},
+  {n:'Bora Bora',s:'French Polynesia',f:'💎',la:-16.5004,lo:-151.7415},
+  {n:'Fiji',s:'Pacific Islands',f:'🌺',la:-17.7134,lo:178.0650},
+  {n:'Jamaica',s:'Caribbean',f:'🎵',la:18.1096,lo:-77.2975},
+  {n:'Barbados',s:'Caribbean',f:'🐠',la:13.1939,lo:-59.5432},
+  {n:'Aruba',s:'Caribbean',f:'🌵',la:12.5211,lo:-69.9683},
+  {n:'Nassau',s:'Bahamas',f:'🏖️',la:25.0480,lo:-77.3554},
+  {n:'Puerto Rico',s:'Caribbean',f:'🌺',la:18.2208,lo:-66.5901},
+  {n:'Moscow',s:'Russia',f:'🏰',la:55.7558,lo:37.6173},
+  {n:'St. Petersburg',s:'Russia',f:'🎨',la:59.9311,lo:30.3609},
+  {n:'Petra',s:'Jordan',f:'🗿',la:30.3285,lo:35.4444},
+];
+
+var DAY_COLS = ['#38BDF8','#FB923C','#34D399','#F472B6','#FBBF24','#C084FC','#67E8F9'];
+
+var G = {
+  dest:null, destFlag:'✈️',
+  arrival:null, departure:null,
+  itin:null, curDay:0,
+  dateType:null, calYear:new Date().getFullYear(), calMonth:new Date().getMonth(), tempDate:null,
+};
+
+var leafMap, layers = {}, activeMarkers = [];
+
+// ── INIT (runs after DOM ready) ──
+window.addEventListener('load', function() {
+  initMap();
+  initSheet();
+  initIPanel();
+  initSearchInput();
+  startClock();
+  updateDayBar(0, 1);
+});
+
+// ── CLOCK ──
+function startClock() {
+  function tick() {
+    var d = new Date();
+    var el = document.getElementById('clockel');
+    if (el) el.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function pad(n) { return n < 10 ? '0'+n : ''+n; }
+  tick();
+  setInterval(tick, 10000);
+}
+
+// ── MAP SETUP ──
+function initMap() {
+  leafMap = L.map('leafmap', {
+    center: [20, 0],
+    zoom: 3,
+    zoomControl: false,
+    attributionControl: false,
+    worldCopyJump: true
+  });
+
+  layers.mapTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19, minZoom:1});
+  layers.satTile = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, minZoom:1});
+  layers.trTile  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, minZoom:1, opacity:0.85});
+
+  layers.mapTile.addTo(leafMap);
+}
+
+function switchLayer(type) {
+  Object.values(layers).forEach(function(l) { if (leafMap.hasLayer(l)) leafMap.removeLayer(l); });
+  document.querySelectorAll('.lbtn').forEach(function(b) { b.classList.remove('on'); });
+
+  if (type === 'map') {
+    layers.mapTile.addTo(leafMap);
+    document.getElementById('lmap').classList.add('on');
+  } else if (type === 'sat') {
+    layers.satTile.addTo(leafMap);
+    document.getElementById('lsat').classList.add('on');
+  } else {
+    layers.trTile.addTo(leafMap);
+    document.getElementById('ltr').classList.add('on');
+  }
+}
+
+// ── DAY BAR ──
+function updateDayBar(idx, total) {
+  var col = DAY_COLS[idx % DAY_COLS.length];
+  document.getElementById('ddot').style.background = col;
+  document.getElementById('dtxt').textContent = total > 1 ? 'Day '+(idx+1)+' of '+total : 'Day 1';
+  var prev = document.getElementById('dprev');
+  var next = document.getElementById('dnext');
+  prev.disabled = (idx === 0);
+  next.disabled = (total <= 1 || idx >= total - 1);
+  next.style.color = !next.disabled ? col : '';
+  prev.style.color = !prev.disabled ? DAY_COLS[Math.max(0,idx-1) % DAY_COLS.length] : '';
+}
+
+function shiftDay(dir) {
+  if (!G.itin) return;
+  var n = G.curDay + dir;
+  if (n < 0 || n >= G.itin.numDays) return;
+  G.curDay = n;
+  updateDayBar(n, G.itin.numDays);
+  renderFlags(n);
+  renderEvents(n);
+  syncIPills(n);
+}
+
+// ── BOTTOM SHEET ──
+function initSheet() {
+  var sheet = document.getElementById('bsheet');
+  var handle = document.getElementById('shandle');
+  var content = document.getElementById('scontent');
+
+  function PEEK() { return window.innerHeight - 82; }
+  function HALF() { return Math.floor(window.innerHeight * 0.46); }
+
+  var curY = null;
+  var isDrag = false, holdTimer = null, holdReady = false;
+  var sCY, sSY, velY = 0, lastCY, lastT;
+
+  function setY(y, anim) {
+    if (anim === false) { sheet.classList.add('notr'); } else { sheet.classList.remove('notr'); }
+    curY = Math.max(0, Math.min(PEEK(), y));
+    sheet.style.transform = 'translateY(' + curY + 'px)';
+    var open = curY < HALF() * 0.75;
+    content.style.overflowY = open ? 'auto' : 'hidden';
+    content.style.pointerEvents = 'all';
+  }
+
+  setTimeout(function() { setY(PEEK(), false); }, 60);
+
+  function snap(vel) {
+    sheet.classList.remove('notr');
+    var h = HALF();
+    if (vel < -0.5 || curY < h * 0.5) {
+      setY(curY < h ? 0 : h);
+    } else if (vel > 0.5 || curY > h * 1.5) {
+      setY(curY > h ? PEEK() : h);
+    } else {
+      var dists = [Math.abs(curY - 0), Math.abs(curY - h), Math.abs(curY - PEEK())];
+      var min = Math.min.apply(null, dists);
+      var idx = dists.indexOf(min);
+      setY([0, h, PEEK()][idx]);
+    }
+  }
+
+  function activate(cy) {
+    isDrag = true; holdReady = true;
+    sCY = cy; sSY = curY !== null ? curY : PEEK();
+    velY = 0; lastCY = cy; lastT = Date.now();
+  }
+
+  handle.addEventListener('mousedown', function(e) {
+    holdReady = false;
+    holdTimer = setTimeout(function() { activate(e.clientY); }, 120);
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!isDrag) return;
+    var now = Date.now();
+    velY = (e.clientY - lastCY) / (Math.max(1, now - lastT));
+    lastCY = e.clientY; lastT = now;
+    setY(sSY + e.clientY - sCY, false);
+  });
+  document.addEventListener('mouseup', function() {
+    clearTimeout(holdTimer);
+    if (isDrag) { isDrag = false; snap(velY); } else if (!holdReady) { setY(curY >= HALF() ? HALF() : PEEK()); }
+    holdReady = false;
+  });
+  handle.addEventListener('touchstart', function(e) {
+    holdReady = false;
+    var t = e.touches[0];
+    holdTimer = setTimeout(function() { activate(t.clientY); }, 120);
+  }, {passive: true});
+  handle.addEventListener('touchmove', function(e) {
+    if (!isDrag) return;
+    var t = e.touches[0], now = Date.now();
+    velY = (t.clientY - lastCY) / (Math.max(1, now - lastT));
+    lastCY = t.clientY; lastT = now;
+    setY(sSY + t.clientY - sCY, false);
+    e.preventDefault();
+  }, {passive: false});
+  handle.addEventListener('touchend', function() {
+    clearTimeout(holdTimer);
+    if (isDrag) { isDrag = false; snap(velY); } else if (!holdReady) { setY(curY >= HALF() ? HALF() : PEEK()); }
+    holdReady = false;
+  });
+  handle.addEventListener('click', function() {
+    if (!holdReady) { setY(curY >= HALF() ? HALF() : PEEK()); }
+  });
+}
+
+// ── ITIN PANEL ──
+function initIPanel() {
+  var panel = document.getElementById('ipanel');
+  var handle = document.getElementById('ihandle');
+  var events = document.getElementById('ievents');
+
+  function COLL() { return window.innerHeight - 82; }
+  function OPEN() { return Math.floor(window.innerHeight * 0.22); }
+
+  var curY = null;
+  var isDrag = false, holdTimer = null, holdReady = false;
+  var sCY, sSY, velY = 0, lastCY, lastT;
+
+  function setY(y, anim) {
+    if (anim === false) { panel.classList.add('notr'); } else { panel.classList.remove('notr'); }
+    curY = Math.max(OPEN(), Math.min(COLL(), y));
+    panel.style.transform = 'translateY(' + curY + 'px)';
+    events.style.overflowY = curY < OPEN() + 60 ? 'auto' : 'hidden';
+  }
+
+  window.setIPanelY = setY;
+  window.openIPanel = function() { setY(OPEN()); };
+  window.closeIPanel = function() { setY(COLL()); };
+
+  function snap(vel) {
+    panel.classList.remove('notr');
+    var mid = (COLL() + OPEN()) / 2;
+    setY(vel < -0.5 || curY < mid ? OPEN() : COLL());
+  }
+  function activate(cy) {
+    isDrag = true; holdReady = true;
+    sCY = cy; sSY = curY !== null ? curY : COLL();
+    velY = 0; lastCY = cy; lastT = Date.now();
+  }
+
+  handle.addEventListener('mousedown', function(e) {
+    holdReady = false;
+    holdTimer = setTimeout(function() { activate(e.clientY); }, 120);
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!isDrag) return;
+    var now = Date.now();
+    velY = (e.clientY - lastCY) / (Math.max(1, now - lastT));
+    lastCY = e.clientY; lastT = now;
+    setY(sSY + e.clientY - sCY, false);
+  });
+  document.addEventListener('mouseup', function() {
+    clearTimeout(holdTimer);
+    if (isDrag) { isDrag = false; snap(velY); } else if (!holdReady) {
+      var mid = (COLL() + OPEN()) / 2;
+      setY(curY < mid ? COLL() : OPEN());
+    }
+    holdReady = false;
+  });
+  handle.addEventListener('touchstart', function(e) {
+    holdReady = false;
+    var t = e.touches[0];
+    holdTimer = setTimeout(function() { activate(t.clientY); }, 120);
+  }, {passive: true});
+  handle.addEventListener('touchmove', function(e) {
+    if (!isDrag) return;
+    var t = e.touches[0], now = Date.now();
+    velY = (t.clientY - lastCY) / (Math.max(1, now - lastT));
+    lastCY = t.clientY; lastT = now;
+    setY(sSY + t.clientY - sCY, false);
+    e.preventDefault();
+  }, {passive: false});
+  handle.addEventListener('touchend', function() {
+    clearTimeout(holdTimer);
+    if (isDrag) { isDrag = false; snap(velY); } else if (!holdReady) {
+      var mid = (COLL() + OPEN()) / 2;
+      setY(curY < mid ? COLL() : OPEN());
+    }
+    holdReady = false;
+  });
+  handle.addEventListener('click', function() {
+    if (!holdReady) {
+      var mid = (COLL() + OPEN()) / 2;
+      setY(curY < mid ? COLL() : OPEN());
+    }
+  });
+}
+
+// ── SEARCH ──
+function initSearchInput() {
+  var inp = document.getElementById('sinput');
+  inp.addEventListener('input', function() { renderResults(inp.value); });
+}
+
+function openSearch() {
+  document.getElementById('sovl').classList.add('open');
+  renderResults('');
+  setTimeout(function() { document.getElementById('sinput').focus(); }, 80);
+}
+function closeSearch() {
+  document.getElementById('sovl').classList.remove('open');
+  document.getElementById('sinput').value = '';
+}
+
+function renderResults(q) {
+  q = (q || '').toLowerCase().trim();
+  var list = q ? DESTS.filter(function(d) { return d.n.toLowerCase().indexOf(q) > -1 || d.s.toLowerCase().indexOf(q) > -1; }) : DESTS;
+  var container = document.getElementById('sresults');
+  container.innerHTML = '';
+  list.slice(0, 80).forEach(function(d) {
+    var el = document.createElement('div');
+    el.className = 'sitem';
+    el.innerHTML = '<div class="sflag">'+d.f+'</div><div><div class="sname">'+d.n+'</div><div class="ssub">'+d.s+'</div></div>';
+    el.onclick = function() { quickDest(d.n, d.f); };
+    container.appendChild(el);
+  });
+}
+
+function quickDest(name, flag) {
+  G.dest = name; G.destFlag = flag || '✈️';
+  closeSearch();
+  openPlan(name);
+}
+
+// ── PLAN ──
+function openPlan(name) {
+  document.getElementById('plname').textContent = name;
+  document.getElementById('planscr').classList.add('open');
+  document.getElementById('buildbtn').classList.add('show');
+  G.arrival = null; G.departure = null;
+  document.getElementById('arrval').textContent = 'Select date'; document.getElementById('arrval').className = 'ival ph';
+  document.getElementById('depval').textContent = 'Select date'; document.getElementById('depval').className = 'ival ph';
+  document.querySelectorAll('.cchip').forEach(function(c) { c.classList.remove('on'); c.querySelector('.cbox').textContent = ''; });
+}
+function closePlan() {
+  document.getElementById('planscr').classList.remove('open');
+  document.getElementById('buildbtn').classList.remove('show');
+}
+function togChk(el) {
+  el.classList.toggle('on');
+  el.querySelector('.cbox').textContent = el.classList.contains('on') ? '✓' : '';
+}
+
+// ── DATE MODAL ──
+function openDateModal(type) {
+  G.dateType = type; G.calYear = new Date().getFullYear(); G.calMonth = new Date().getMonth(); G.tempDate = null;
+  document.getElementById('dtitle').textContent = type === 'arr' ? 'Select Arrival Date' : 'Select Departure Date';
+  renderCal();
+  document.getElementById('dmodal').classList.add('open');
+}
+function changeMonth(d) {
+  G.calMonth += d;
+  if (G.calMonth > 11) { G.calMonth = 0; G.calYear++; }
+  if (G.calMonth < 0) { G.calMonth = 11; G.calYear--; }
+  renderCal();
+}
+function renderCal() {
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('mlbl').textContent = MONTHS[G.calMonth] + ' ' + G.calYear;
+  var grid = document.getElementById('calgrid'); grid.innerHTML = '';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(function(d) {
+    var h = document.createElement('div'); h.className = 'caldh'; h.textContent = d; grid.appendChild(h);
+  });
+  var first = new Date(G.calYear, G.calMonth, 1).getDay();
+  var days = new Date(G.calYear, G.calMonth + 1, 0).getDate();
+  var today = new Date(); today.setHours(0,0,0,0);
+  for (var i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
+  for (var day = 1; day <= days; day++) {
+    (function(d) {
+      var el = document.createElement('div'); el.className = 'cald'; el.textContent = d;
+      var dt = new Date(G.calYear, G.calMonth, d);
+      if (dt < today) { el.classList.add('dis'); }
+      if (G.tempDate && G.tempDate.getTime() === dt.getTime()) el.classList.add('sel');
+      el.addEventListener('click', function() {
+        grid.querySelectorAll('.cald').forEach(function(x) { x.classList.remove('sel'); });
+        el.classList.add('sel'); G.tempDate = dt;
+      });
+      grid.appendChild(el);
+    })(day);
+  }
+}
+function confirmDate() {
+  if (!G.tempDate) { document.getElementById('dmodal').classList.remove('open'); return; }
+  var fmt = G.tempDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+  if (G.dateType === 'arr') {
+    G.arrival = G.tempDate;
+    document.getElementById('arrval').textContent = fmt; document.getElementById('arrval').className = 'ival';
+  } else {
+    G.departure = G.tempDate;
+    document.getElementById('depval').textContent = fmt; document.getElementById('depval').className = 'ival';
+  }
+  G.tempDate = null; document.getElementById('dmodal').classList.remove('open');
+}
+document.getElementById('dmodal').addEventListener('click', function(e) {
+  if (e.target === document.getElementById('dmodal')) document.getElementById('dmodal').classList.remove('open');
+});
+
+// ── ITINERARY TEMPLATES ──
+var ITEMPLATES = [
+  [{t:'8:00 AM',n:'✈️ Arrival & Check-In',d:'Land and transfer to your hotel. Settle in and freshen up.',tag:'TRAVEL'},{t:'11:00 AM',n:'🍳 Welcome Breakfast',d:'Enjoy a welcome breakfast at a great local spot.',tag:'DINING'},{t:'1:00 PM',n:'🗺️ City Orientation Walk',d:'Explore the neighbourhood around your hotel on foot.',tag:'EXPLORE'},{t:'3:30 PM',n:'🏛️ Landmark Visit',d:'Head to the city\'s most iconic attraction.',tag:'SIGHTSEEING'},{t:'7:00 PM',n:'🍽️ Welcome Dinner',d:'Reservation at a top-rated local restaurant.',tag:'DINING'}],
+  [{t:'7:30 AM',n:'☀️ Morning Jog',d:'Start active — hotel gym or a nearby park.',tag:'WELLNESS'},{t:'9:00 AM',n:'🥐 Café Breakfast',d:'Try a local café for an authentic morning.',tag:'DINING'},{t:'11:00 AM',n:'🎨 Museum / Gallery',d:'Visit the city\'s premier cultural institution.',tag:'CULTURE'},{t:'2:00 PM',n:'🛍️ Market Tour',d:'Browse artisanal goods, street food, and local crafts.',tag:'SHOPPING'},{t:'5:00 PM',n:'🌅 Sunset Viewpoint',d:'Head to the best vantage point for golden hour.',tag:'SIGHTSEEING'},{t:'8:00 PM',n:'🍸 Rooftop Bar',d:'End the evening with cocktails and skyline views.',tag:'NIGHTLIFE'}],
+  [{t:'8:00 AM',n:'🌿 Nature Excursion',d:'Day trip to surrounding nature — park, coastline or mountains.',tag:'ADVENTURE'},{t:'12:00 PM',n:'🥙 Picnic Lunch',d:'Pack a local spread and enjoy it amid nature.',tag:'DINING'},{t:'3:00 PM',n:'🤿 Activity Session',d:'Choose kayaking, hiking, cycling, or a cultural workshop.',tag:'ADVENTURE'},{t:'7:00 PM',n:'🐟 Seafood Dinner',d:'Local harbour restaurant with the day\'s freshest catch.',tag:'DINING'}],
+  [{t:'9:00 AM',n:'🏘️ Hidden Neighbourhood',d:'Discover secret gems — alleyways, murals, local life.',tag:'EXPLORE'},{t:'11:30 AM',n:'☕ Specialty Coffee',d:'A trendy specialty coffee spot.',tag:'LEISURE'},{t:'1:00 PM',n:'🍜 Food Tour',d:'Guided tasting tour of 5 top-rated local eateries.',tag:'DINING'},{t:'4:00 PM',n:'🛳️ Boat Tour',d:'See the city from the water. 90-minute cruise.',tag:'SIGHTSEEING'},{t:'8:30 PM',n:'🎭 Evening Show',d:'Live music, theater, or cultural performance.',tag:'CULTURE'}],
+  [{t:'8:30 AM',n:'🏖️ Beach Morning',d:'Enjoy a relaxed morning at the best local beach.',tag:'LEISURE'},{t:'11:00 AM',n:'🧴 Spa & Wellness',d:'Book a local spa treatment or yoga class.',tag:'WELLNESS'},{t:'1:30 PM',n:'🍹 Lunch by the Sea',d:'Fresh cuisine at a beachfront restaurant.',tag:'DINING'},{t:'4:00 PM',n:'📸 Photography Walk',d:'Golden hour stroll through the most photogenic spots.',tag:'EXPLORE'},{t:'7:30 PM',n:'🥂 Fine Dining',d:'Special dinner at the city\'s most celebrated restaurant.',tag:'DINING'}],
+  [{t:'9:00 AM',n:'🧳 Check-Out',d:'Pack your bags and check out of the hotel.',tag:'TRAVEL'},{t:'11:00 AM',n:'🛒 Last-Minute Shopping',d:'Pick up souvenirs and final gifts.',tag:'SHOPPING'},{t:'1:00 PM',n:'🍽️ Farewell Lunch',d:'Final meal at your favourite spot from the trip.',tag:'DINING'},{t:'3:30 PM',n:'✈️ Departure',d:'Head to the airport. Safe travels!',tag:'TRAVEL'}],
+];
+
+// ── BUILD ITINERARY ──
+function startBuild() {
+  if (!G.arrival || !G.departure) {
+    var a = new Date(); a.setDate(a.getDate()+7);
+    var b = new Date(); b.setDate(b.getDate()+12);
+    G.arrival = a; G.departure = b;
+  }
+  document.getElementById('loader').classList.add('show');
+  setTimeout(function() {
+    document.getElementById('loader').classList.remove('show');
+    compileTrip();
+  }, 1700);
+}
+
+function compileTrip() {
+  var dest = G.dest || 'Miami';
+  var numDays = Math.max(1, Math.round((G.departure - G.arrival) / 86400000) + 1);
+  G.itin = {
+    dest: dest,
+    numDays: numDays,
+    arrival: G.arrival,
+    departure: G.departure,
+    days: []
+  };
+  for (var i = 0; i < numDays; i++) {
+    G.itin.days.push({
+      date: new Date(G.arrival.getTime() + i * 86400000),
+      events: ITEMPLATES[i % ITEMPLATES.length]
+    });
+  }
+  G.curDay = 0;
+  closePlan();
+
+  // Show trip bar, hide home sheet
+  document.getElementById('bsheet').style.display = 'none';
+  document.getElementById('tripbar').classList.add('show');
+  document.getElementById('ipanel').classList.add('show');
+
+  var fmt = function(d) { return d.toLocaleDateString('en-US', {month:'short', day:'numeric'}); };
+  document.getElementById('tbdest').textContent = G.destFlag + ' ' + dest;
+  document.getElementById('tbdates').textContent = fmt(G.arrival) + ' → ' + fmt(G.departure);
+
+  document.getElementById('icity').textContent = dest;
+  document.getElementById('idates').textContent = fmt(G.arrival) + ' – ' + fmt(G.departure);
+  document.getElementById('inum').textContent = numDays;
+
+  // Build day pills
+  var pillsEl = document.getElementById('ipills');
+  pillsEl.innerHTML = '';
+  for (var j = 0; j < numDays; j++) {
+    (function(idx) {
+      var p = document.createElement('div');
+      p.className = 'ipill';
+      var c = DAY_COLS[idx % DAY_COLS.length];
+      if (idx === 0) { p.classList.add('on'); p.style.borderColor = c; p.style.color = c; p.style.background = c + '22'; }
+      p.textContent = 'Day ' + (idx+1);
+      p.addEventListener('click', function() {
+        G.curDay = idx;
+        updateDayBar(idx, numDays);
+        syncIPills(idx);
+        renderFlags(idx);
+        renderEvents(idx);
+      });
+      pillsEl.appendChild(p);
+    })(j);
+  }
+
+  updateDayBar(0, numDays);
+
+  // Fly map to destination
+  var destData = null;
+  for (var k = 0; k < DESTS.length; k++) {
+    if (DESTS[k].n === dest) { destData = DESTS[k]; break; }
+  }
+  if (destData && leafMap) {
+    leafMap.flyTo([destData.la, destData.lo], 12, {duration: 2.2, easeLinearity: 0.4});
+  }
+
+  renderFlags(0);
+  renderEvents(0);
+
+  // Collapse itin panel to show trip bar only
+  setTimeout(function() {
+    if (window.closeIPanel) window.closeIPanel();
+  }, 300);
+}
+
+function syncIPills(idx) {
+  document.querySelectorAll('.ipill').forEach(function(b, i) {
+    var c = DAY_COLS[i % DAY_COLS.length];
+    if (i === idx) {
+      b.classList.add('on'); b.style.borderColor = c; b.style.color = c; b.style.background = c + '22';
+    } else {
+      b.classList.remove('on'); b.style.borderColor = ''; b.style.color = ''; b.style.background = '';
+    }
+  });
+}
+
+// ── RENDER MAP FLAGS ──
+var FLAG_OFF = [[0,0],[0.007,-0.010],[0.011,0.007],[-0.008,0.013],[0.016,-0.004],[-0.013,-0.009],[0.004,0.018],[0.019,0.011]];
+
+function renderFlags(dayIdx) {
+  activeMarkers.forEach(function(m) { if (leafMap) leafMap.removeLayer(m); });
+  activeMarkers = [];
+  if (!G.itin || !leafMap) return;
+
+  var day = G.itin.days[dayIdx];
+  var color = DAY_COLS[dayIdx % DAY_COLS.length];
+  var destData = null;
+  for (var k = 0; k < DESTS.length; k++) {
+    if (DESTS[k].n === G.itin.dest) { destData = DESTS[k]; break; }
+  }
+  var baseLa = destData ? destData.la : 25;
+  var baseLo = destData ? destData.lo : 55;
+
+  day.events.forEach(function(ev, i) {
+    var off = FLAG_OFF[i % FLAG_OFF.length];
+    var la = baseLa + off[0], lo = baseLo + off[1];
+    var emoji = ev.n.split(' ')[0];
+    var label = ev.n.split(' ').slice(1).join(' ').substring(0, 14);
+
+    var html = '<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">'
+      + '<div style="background:'+color+';color:#000;border-radius:5px 5px 0 0;padding:3px 8px;font-size:10px;font-weight:700;font-family:Sora,sans-serif;white-space:nowrap;box-shadow:0 2px 8px '+color+'66;">'+emoji+' '+label+'</div>'
+      + '<div style="width:2px;height:18px;background:'+color+';opacity:0.9;"></div>'
+      + '<div style="width:7px;height:7px;border-radius:50%;background:'+color+';box-shadow:0 0 8px 2px '+color+'77;margin-top:-2px;"></div>'
+      + '</div>';
+
+    var icon = L.divIcon({ className: '', html: html, iconAnchor: [40, 38], iconSize: [80, 42] });
+    var marker = L.marker([la, lo], {icon: icon, interactive: true});
+    marker.on('click', function() { if (window.openIPanel) window.openIPanel(); });
+    marker.addTo(leafMap);
+    activeMarkers.push(marker);
+  });
+}
+
+// ── RENDER EVENTS ──
+function renderEvents(dayIdx) {
+  var day = G.itin.days[dayIdx];
+  var color = DAY_COLS[dayIdx % DAY_COLS.length];
+  var container = document.getElementById('ievents');
+  container.innerHTML = '';
+  day.events.forEach(function(ev, i) {
+    var el = document.createElement('div');
+    el.className = 'iev';
+    el.style.animationDelay = (i * 0.06) + 's';
+    el.innerHTML = '<div class="etime">'+ev.t+'</div>'
+      + '<div class="espine"><div class="edot" style="background:'+color+';border-color:'+color+';box-shadow:0 0 6px '+color+'77;"></div>'+(i < day.events.length-1 ? '<div class="eline"></div>' : '')+'</div>'
+      + '<div class="einfo"><div class="ename">'+ev.n+'</div><div class="edesc">'+ev.d+'</div><span class="etag" style="background:'+color+'22;color:'+color+';">'+ev.tag+'</span></div>';
+    container.appendChild(el);
+  });
+}
+</script>
+</body>
+</html>
