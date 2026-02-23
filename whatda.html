@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Voyagr</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--a:#38BDF8;--y:#FBBF24;--bg:rgba(9,13,24,0.96);--br:rgba(255,255,255,0.10)}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:#0a0f1e;color:#fff;user-select:none}
+
+/* ── MAP ── */
+#gmap{position:fixed;inset:0;z-index:0}
+
+/* ── STATUS BAR ── */
+#sbar{position:fixed;top:0;left:0;right:0;height:48px;z-index:400;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(to bottom,rgba(8,12,22,0.85),transparent);pointer-events:none}
+.stime{font-size:14px;font-weight:700;font-family:'Sora',sans-serif}
+
+/* ── DAY BAR ── */
+#daybar{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:300;display:flex;align-items:center;background:rgba(14,20,38,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.15);border-radius:50px;padding:5px 6px;min-width:190px;box-shadow:0 4px 20px rgba(0,0,0,0.4)}
+.darrow{width:32px;height:32px;border-radius:50%;border:none;background:transparent;color:rgba(255,255,255,0.4);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;outline:none}
+.darrow:hover:not(:disabled){background:rgba(255,255,255,0.12);color:#fff}
+.darrow:disabled{opacity:0.18;pointer-events:none}
+#dlabel{flex:1;text-align:center;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 4px;white-space:nowrap}
+.ddot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background 0.3s}
+
+/* ── LAYER TOGGLE ── */
+#ltoggle{position:fixed;top:54px;right:14px;z-index:300;display:flex;flex-direction:column;gap:5px}
+.lbtn{width:44px;height:44px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.18);background:rgba(14,20,38,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all 0.2s;color:rgba(255,255,255,0.55);box-shadow:0 3px 14px rgba(0,0,0,0.4)}
+.lbtn:hover{border-color:var(--a);color:#fff}
+.lbtn.on{border-color:var(--a);background:rgba(56,189,248,0.2);color:var(--a)}
+.lico{font-size:16px;display:block;line-height:1}
+.ltxt{font-size:7px;font-family:'Sora',sans-serif;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;display:block;margin-top:2px}
+
+/* ── BOTTOM SHEET ── */
+#bsheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:200;
+  border-radius:22px 22px 0 0;
+  background:var(--bg);
+  backdrop-filter:blur(32px) saturate(180%);
+  -webkit-backdrop-filter:blur(32px) saturate(180%);
+  border-top:1px solid var(--br);
+  display:flex;flex-direction:column;
+  box-shadow:0 -8px 40px rgba(0,0,0,0.5);
+  will-change:transform;
+  /* no CSS transition here — JS handles all motion */
+  transition:none;
+}
+#bsheet.snap{transition:transform 0.38s cubic-bezier(0.32,0.72,0,1)!important}
+#bsheet.hidden{display:none!important}
+
+/* The sticky "peek" zone — always visible at the bottom */
+#bpeek{
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  touch-action:none; /* handle receives all pointer events */
+}
+#shandle{padding:10px 0 4px;display:flex;flex-direction:column;align-items:center;cursor:ns-resize}
+.spill{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,0.28)}
+.shint{font-size:8px;color:rgba(255,255,255,0.22);font-family:'Sora',sans-serif;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-top:3px}
+#srow{display:flex;align-items:center;gap:10px;padding:8px 16px 12px;flex-shrink:0}
+.spbar{flex:1;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.14);border-radius:50px;padding:10px 16px;cursor:pointer;transition:background 0.2s}
+.spbar:hover{background:rgba(255,255,255,0.14)}
+.sico{font-size:15px;opacity:0.5}
+.sph{font-size:14px;color:rgba(255,255,255,0.45);font-family:'Sora',sans-serif;flex:1}
+.ava{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#7C3AED);border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0}
+
+/* Scrollable content shown when sheet is pulled up */
+#scontent{overflow-y:hidden;flex:1;scrollbar-width:none;padding:0 0 36px;overscroll-behavior:contain}
+#scontent::-webkit-scrollbar{display:none}
+.slabel{font-family:'Sora',sans-serif;font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:1px;text-transform:uppercase;padding:14px 16px 8px}
+.hrow{display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none}
+.hrow::-webkit-scrollbar{display:none}
+.rchip{display:flex;align-items:center;gap:7px;flex-shrink:0;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:8px 14px;cursor:pointer;transition:background 0.2s;font-size:13px;font-weight:500;white-space:nowrap}
+.rchip:hover{background:rgba(255,255,255,0.14)}
+.dcard{flex-shrink:0;width:136px;height:96px;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:transform 0.2s}
+.dcard:hover{transform:scale(1.04)}
+.dcbg{position:absolute;inset:0;background-size:cover}
+.dcov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.7) 0%,transparent 55%)}
+.dcname{position:absolute;bottom:7px;left:9px;font-family:'Sora',sans-serif;font-size:12px;font-weight:700}
+.tcard{flex-shrink:0;width:155px;height:108px;border-radius:18px;background:rgba(255,255,255,0.06);border:1.5px dashed rgba(255,255,255,0.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all 0.2s}
+.tcard:hover{background:rgba(56,189,248,0.08);border-color:rgba(56,189,248,0.4)}
+.tcplus{font-size:26px;color:rgba(255,255,255,0.3)}
+.tclabel{font-size:11px;color:rgba(255,255,255,0.4);text-align:center;font-weight:600;line-height:1.4;font-family:'Sora',sans-serif}
+.topc{flex-shrink:0;width:148px;height:103px;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;transition:transform 0.2s}
+.topc:hover{transform:scale(1.04)}
+.tbadge{position:absolute;top:7px;left:7px;background:rgba(0,0,0,0.55);backdrop-filter:blur(8px);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--y);font-family:'Sora',sans-serif}
+
+/* ── TRIP BAR ── */
+#tripbar{position:fixed;bottom:0;left:0;right:0;z-index:199;background:rgba(9,13,24,0.95);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.1);padding:14px 18px 30px;display:none;flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+#tripbar.show{display:flex}
+.tbdest{font-family:'Sora',sans-serif;font-size:17px;font-weight:800}
+.tbdates{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
+.tbopen{background:linear-gradient(135deg,var(--a),#7C3AED);border:none;border-radius:50px;padding:9px 18px;color:#fff;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+
+/* ── SEARCH OVERLAY ── */
+#sovl{position:fixed;inset:0;z-index:500;background:rgba(7,10,20,0.97);backdrop-filter:blur(20px);display:none;flex-direction:column;padding-top:52px}
+#sovl.open{display:flex}
+.sovhdr{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.sovback{font-size:13px;color:var(--a);font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;white-space:nowrap;border:none;background:none}
+.sovinwrap{flex:1;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:11px 14px}
+.sovin{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:16px;font-family:'Sora',sans-serif}
+.sovin::placeholder{color:rgba(255,255,255,0.3)}
+.sresults{overflow-y:auto;flex:1;padding:8px 12px 40px;scrollbar-width:none;display:flex;flex-direction:column;gap:6px}
+.sresults::-webkit-scrollbar{display:none}
+.sitem{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all 0.16s}
+.sitem:hover{background:rgba(56,189,248,0.1);border-color:rgba(56,189,248,0.3)}
+.sflag{font-size:22px;width:38px;text-align:center;flex-shrink:0}
+.sname{font-family:'Sora',sans-serif;font-size:14px;font-weight:600}
+.ssub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
+
+/* ── PLAN SCREEN ── */
+#planscr{position:fixed;inset:0;z-index:600;background:rgba(7,10,20,0.99);display:none;flex-direction:column;overflow-y:auto;scrollbar-width:none}
+#planscr.open{display:flex}
+#planscr::-webkit-scrollbar{display:none}
+.plhdr{padding:58px 20px 16px}
+.plback{font-size:13px;color:var(--a);cursor:pointer;font-weight:700;font-family:'Sora',sans-serif;display:inline-flex;align-items:center;gap:5px;margin-bottom:14px;border:none;background:none}
+.plname{font-family:'Sora',sans-serif;font-size:28px;font-weight:800;background:linear-gradient(125deg,#fff 55%,var(--a));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.plsub{font-size:13px;color:rgba(255,255,255,0.38);margin-top:3px}
+.plbody{padding:4px 20px 120px;display:flex;flex-direction:column;gap:22px}
+.plsec{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin-bottom:10px}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ibox{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 14px;cursor:pointer;transition:all 0.18s}
+.ibox:hover{border-color:rgba(56,189,248,0.5)}
+.ibox.error{border-color:rgba(251,99,99,0.7);animation:shake 0.3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.ilbl{font-size:10px;color:rgba(255,255,255,0.38);font-weight:700;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:4px;font-family:'Sora',sans-serif}
+.ival{font-size:14px;font-weight:500;color:rgba(255,255,255,0.85)}
+.ival.ph{color:rgba(255,255,255,0.28)}
+.budrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.budbox{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.budbox input{background:transparent;border:none;outline:none;color:#fff;font-size:17px;font-weight:700;font-family:'Sora',sans-serif;width:100%}
+.budbox input::placeholder{color:rgba(255,255,255,0.2);font-weight:400;font-size:14px}
+.chkwrap{display:flex;flex-wrap:wrap;gap:8px}
+.cchip{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.11);border-radius:50px;padding:8px 14px;cursor:pointer;transition:all 0.18s;font-size:12px;font-weight:600}
+.cchip.on{background:rgba(56,189,248,0.14);border-color:rgba(56,189,248,0.55);color:var(--a)}
+.cbox{width:15px;height:15px;border-radius:4px;border:1.5px solid rgba(255,255,255,0.28);display:flex;align-items:center;justify-content:center;font-size:9px;transition:all 0.15s;flex-shrink:0}
+.cchip.on .cbox{background:var(--a);border-color:var(--a);color:#000}
+
+#buildbtn{position:fixed;bottom:30px;left:20px;right:20px;background:linear-gradient(135deg,#38BDF8,#7C3AED);border:none;border-radius:18px;padding:17px;color:#fff;font-family:'Sora',sans-serif;font-size:15px;font-weight:800;cursor:pointer;z-index:700;display:none;box-shadow:0 8px 32px rgba(56,189,248,0.35);letter-spacing:0.3px;transition:transform 0.15s}
+#buildbtn.show{display:block}
+#buildbtn:hover{transform:translateY(-2px)}
+
+/* ── DATE MODAL ── */
+#dmodal{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.75);display:none;align-items:flex-end;backdrop-filter:blur(6px)}
+#dmodal.open{display:flex}
+.dsheet{width:100%;background:#0f1628;border-radius:22px 22px 0 0;padding:18px 20px 38px;border-top:1px solid rgba(255,255,255,0.1)}
+.dtitle{font-family:'Sora',sans-serif;font-size:17px;font-weight:700;text-align:center;margin-bottom:14px}
+.mnavrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mnavbtn{background:rgba(255,255,255,0.08);border:none;border-radius:50%;width:30px;height:30px;color:#fff;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.mlbl{font-family:'Sora',sans-serif;font-weight:700;font-size:14px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.caldh{font-size:10px;text-align:center;color:rgba(255,255,255,0.3);font-weight:700;font-family:'Sora',sans-serif;padding:3px 0}
+.cald{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:12px;cursor:pointer;transition:background 0.14s;font-family:'Sora',sans-serif}
+.cald:hover{background:rgba(255,255,255,0.1)}
+.cald.sel{background:var(--a);color:#000;font-weight:700}
+.cald.dis{opacity:0.22;pointer-events:none}
+.dconfirm{width:100%;background:linear-gradient(135deg,#38BDF8,#7C3AED);border:none;border-radius:14px;padding:13px;color:#fff;font-family:'Sora',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px}
+
+/* ── ITIN PANEL ── */
+#ipanel{position:fixed;left:0;right:0;bottom:0;z-index:250;border-radius:22px 22px 0 0;background:rgba(9,13,24,0.96);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);border-top:1px solid rgba(255,255,255,0.1);display:none;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.6);will-change:transform;transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);max-height:88vh}
+#ipanel.show{display:flex}
+#ipanel.notr{transition:none!important}
+#ihandle{padding:10px 0 0;display:flex;flex-direction:column;align-items:center;cursor:ns-resize;flex-shrink:0;touch-action:none}
+.ipipill{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.22);margin-bottom:4px}
+.isum{padding:6px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.icity{font-family:'Sora',sans-serif;font-size:19px;font-weight:800}
+.idates{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
+.istat{text-align:right}
+.inum{font-family:'Sora',sans-serif;font-size:21px;font-weight:800;color:var(--a)}
+.inumlbl{font-size:10px;color:rgba(255,255,255,0.38)}
+#ipills{display:flex;gap:7px;overflow-x:auto;padding:0 18px 10px;scrollbar-width:none;flex-shrink:0}
+#ipills::-webkit-scrollbar{display:none}
+.ipill{flex-shrink:0;padding:5px 14px;border-radius:50px;font-family:'Sora',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.18s;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.45)}
+#ievents{overflow-y:hidden;flex:1;scrollbar-width:none;padding:0 18px 40px}
+#ievents::-webkit-scrollbar{display:none}
+.iev{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05);animation:fup 0.3s ease both}
+@keyframes fup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.etime{min-width:50px;text-align:right;font-family:'Sora',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);padding-top:2px}
+.espine{display:flex;flex-direction:column;align-items:center;padding-top:3px}
+.edot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:2px solid}
+.eline{flex:1;width:1px;background:rgba(255,255,255,0.08);min-height:28px}
+.einfo{flex:1}
+.ename{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px}
+.edesc{font-size:11px;color:rgba(255,255,255,0.42);line-height:1.45}
+.etag{display:inline-block;margin-top:4px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;font-family:'Sora',sans-serif}
+
+/* ── LOADER ── */
+#loader{position:fixed;inset:0;z-index:900;background:rgba(7,10,20,0.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+#loader.show{display:flex}
+.sring{width:56px;height:56px;border:3px solid rgba(255,255,255,0.08);border-top-color:var(--a);border-radius:50%;animation:spin 0.85s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltxt1{font-family:'Sora',sans-serif;font-size:15px;color:rgba(255,255,255,0.65)}
+.ltxt2{font-size:12px;color:rgba(255,255,255,0.3)}
+</style>
+</head>
+<body>
+
+<!-- STATUS -->
+<div id="sbar">
+  <span class="stime" id="clockel">9:41</span>
+  <span style="font-size:11px;opacity:0.75">▲▲▲ WiFi 🔋</span>
+</div>
+
+<!-- GOOGLE MAP -->
+<div id="gmap"></div>
+
+<!-- DAY BAR (hidden until trip built) -->
+<div id="daybar" style="display:none">
+  <button class="darrow" id="dprev" onclick="shiftDay(-1)">‹</button>
+  <div id="dlabel">
+    <span class="ddot" id="ddot" style="background:#38BDF8"></span>
+    <span id="dtxt">Day 1</span>
+  </div>
+  <button class="darrow" id="dnext" onclick="shiftDay(1)">›</button>
+</div>
+
+<!-- LAYER TOGGLE -->
+<div id="ltoggle">
+  <button class="lbtn on" id="lmap" onclick="switchLayer('roadmap')"><span class="lico">🗺️</span><span class="ltxt">Map</span></button>
+  <button class="lbtn" id="lsat" onclick="switchLayer('satellite')"><span class="lico">🛰️</span><span class="ltxt">Sat</span></button>
+  <button class="lbtn" id="ltr" onclick="switchLayer('transit')"><span class="lico">🚇</span><span class="ltxt">Transit</span></button>
+</div>
+
+<!-- BOTTOM SHEET -->
+<div id="bsheet">
+  <!-- Peek zone: handle + search bar — always visible at peek height -->
+  <div id="bpeek">
+    <div id="shandle">
+      <div class="spill"></div>
+      <div class="shint">drag up to explore</div>
+    </div>
+    <div id="srow">
+      <div class="spbar" onclick="openSearch()">
+        <span class="sico">🔍</span>
+        <span class="sph">Where do you want to go?</span>
+      </div>
+      <div class="ava">👤</div>
+    </div>
+  </div>
+  <!-- Scrollable content — only accessible when sheet is pulled up -->
+  <div id="scontent">
+    <div class="slabel">Recently Viewed</div>
+    <div class="hrow">
+      <div class="rchip" onclick="quickDest('Paris','🗼')">🗼 Paris</div>
+      <div class="rchip" onclick="quickDest('Tokyo','🏯')">🏯 Tokyo</div>
+      <div class="rchip" onclick="quickDest('New York','🗽')">🗽 New York</div>
+      <div class="rchip" onclick="quickDest('Bali','🌴')">🌴 Bali</div>
+      <div class="rchip" onclick="quickDest('Dubai','🏙️')">🏙️ Dubai</div>
+      <div class="rchip" onclick="quickDest('London','👑')">👑 London</div>
+    </div>
+    <div class="slabel">Suggested For You</div>
+    <div class="hrow">
+      <div class="dcard" onclick="quickDest('Miami','🌊')"><div class="dcbg" style="background:linear-gradient(135deg,#0277BD,#26C6DA,#F48FB1)"></div><div class="dcov"></div><div class="dcname">Miami</div></div>
+      <div class="dcard" onclick="quickDest('London','👑')"><div class="dcbg" style="background:linear-gradient(135deg,#263238,#455A64,#90A4AE)"></div><div class="dcov"></div><div class="dcname">London</div></div>
+      <div class="dcard" onclick="quickDest('Los Angeles','🎬')"><div class="dcbg" style="background:linear-gradient(135deg,#E65100,#FF8F00,#FFF59D)"></div><div class="dcov"></div><div class="dcname">Los Angeles</div></div>
+      <div class="dcard" onclick="quickDest('Tokyo','🏯')"><div class="dcbg" style="background:linear-gradient(135deg,#880E4F,#E91E63,#FFCCBC)"></div><div class="dcov"></div><div class="dcname">Tokyo</div></div>
+      <div class="dcard" onclick="quickDest('Paris','🗼')"><div class="dcbg" style="background:linear-gradient(135deg,#1A237E,#3949AB,#90CAF9)"></div><div class="dcov"></div><div class="dcname">Paris</div></div>
+      <div class="dcard" onclick="quickDest('Dubai','🏙️')"><div class="dcbg" style="background:linear-gradient(135deg,#BF360C,#FF7043,#FFE0B2)"></div><div class="dcov"></div><div class="dcname">Dubai</div></div>
+    </div>
+    <div class="slabel">Trips</div>
+    <div class="hrow">
+      <div class="tcard" onclick="openSearch()">
+        <div class="tcplus">＋</div>
+        <div class="tclabel">Start your<br>first trip</div>
+      </div>
+    </div>
+    <div class="slabel">Top Rated</div>
+    <div class="hrow">
+      <div class="topc" onclick="quickDest('Santorini','🏛️')"><div class="dcbg" style="background:linear-gradient(135deg,#0D47A1,#1E88E5,#E3F2FD);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.9</div><div class="dcname">Santorini</div></div>
+      <div class="topc" onclick="quickDest('Kyoto','⛩️')"><div class="dcbg" style="background:linear-gradient(135deg,#880E4F,#D81B60,#FFCCBC);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.8</div><div class="dcname">Kyoto</div></div>
+      <div class="topc" onclick="quickDest('Maldives','🏝️')"><div class="dcbg" style="background:linear-gradient(135deg,#004D40,#00ACC1,#B2EBF2);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.9</div><div class="dcname">Maldives</div></div>
+      <div class="topc" onclick="quickDest('Bali','🌴')"><div class="dcbg" style="background:linear-gradient(135deg,#33691E,#7CB342,#DCEDC8);position:absolute;inset:0"></div><div class="dcov"></div><div class="tbadge">⭐ 4.8</div><div class="dcname">Bali</div></div>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- TRIP BAR -->
+<div id="tripbar">
+  <div>
+    <div class="tbdest" id="tbdest">Miami</div>
+    <div class="tbdates" id="tbdates">Mar 10 – Mar 15</div>
+  </div>
+  <button class="tbopen" onclick="openIPanel()">View Itinerary ↑</button>
+</div>
+
+<!-- SEARCH -->
+<div id="sovl">
+  <div class="sovhdr">
+    <button class="sovback" onclick="closeSearch()">← Cancel</button>
+    <div class="sovinwrap">
+      <span style="font-size:15px;opacity:0.4">🔍</span>
+      <input class="sovin" id="sovin" placeholder="Search any destination..." autocomplete="off"/>
+    </div>
+  </div>
+  <div class="sresults" id="sresults"></div>
+</div>
+
+<!-- PLAN SCREEN -->
+<div id="planscr">
+  <div class="plhdr">
+    <button class="plback" onclick="closePlan()">← Back</button>
+    <div class="plname" id="plname">Miami</div>
+    <div class="plsub">Plan your perfect trip ✈️</div>
+  </div>
+  <div class="plbody">
+    <div>
+      <div class="plsec">📅 Dates</div>
+      <div class="twocol">
+        <div class="ibox" id="arrbox" onclick="openDateModal('arr')"><div class="ilbl">Arrival</div><div class="ival ph" id="arrval">Select date</div></div>
+        <div class="ibox" id="depbox" onclick="openDateModal('dep')"><div class="ilbl">Departure</div><div class="ival ph" id="depval">Select date</div></div>
+      </div>
+      <div id="dateerr" style="font-size:11px;color:#fb6363;margin-top:6px;display:none;font-family:'Sora',sans-serif;">Departure must be after arrival.</div>
+    </div>
+    <div>
+      <div class="plsec">💰 Budget</div>
+      <div class="budrow">
+        <div class="budbox"><div class="ilbl">Minimum</div><input type="number" id="budmin" placeholder="$500"/></div>
+        <div class="budbox"><div class="ilbl">Maximum</div><input type="number" id="budmax" placeholder="$3,000"/></div>
+      </div>
+    </div>
+    <div>
+      <div class="plsec">✨ Preferences</div>
+      <div class="chkwrap">
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Family Friendly</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Deals</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Free Cancellation</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Luxury</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Adventure</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Beach</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Foodie</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Solo</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Romantic</div>
+        <div class="cchip" onclick="togChk(this)"><div class="cbox"></div>Cultural</div>
+      </div>
+    </div>
+    <div style="height:80px"></div>
+  </div>
+</div>
+<button id="buildbtn" onclick="startBuild()">✈️ Build My Itinerary</button>
+
+<!-- DATE MODAL -->
+<div id="dmodal" onclick="closeDModal(event)">
+  <div class="dsheet">
+    <div class="dtitle" id="dtitle">Select Date</div>
+    <div class="mnavrow">
+      <button class="mnavbtn" onclick="changeMonth(-1)">‹</button>
+      <span class="mlbl" id="mlbl"></span>
+      <button class="mnavbtn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="calgrid" id="calgrid"></div>
+    <button class="dconfirm" onclick="confirmDate()">Confirm</button>
+  </div>
+</div>
+
+<!-- ITIN PANEL -->
+<div id="ipanel">
+  <div id="ihandle"><div class="ipipill"></div></div>
+  <div class="isum">
+    <div><div class="icity" id="icity"></div><div class="idates" id="idates"></div></div>
+    <div class="istat"><div class="inum" id="inum"></div><div class="inumlbl">Days</div></div>
+  </div>
+  <div id="ipills"></div>
+  <div id="ievents"></div>
+</div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="sring"></div>
+  <div class="ltxt1">Building your itinerary...</div>
+  <div class="ltxt2">Curating the best experiences</div>
+</div>
+
+<!-- Google Maps JavaScript API -->
+<!-- 
+  MCP CONFIG (add to your mcp.json):
+  "mcpServers": {
+    "google-maps-platform-code-assist": {
+      "command": "npx",
+      "args": ["-y", "@googlemaps/code-assist-mcp@latest"]
+    }
+  }
+  Then replace YOUR_GOOGLE_MAPS_API_KEY below with the key provided by the MCP server.
+-->
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+// Replace with your Google Maps API key (from MCP or Google Cloud Console)
+var GMAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+
+// ── DATA ────────────────────────────────────────────────────────
+var DESTS = [
+  {n:'New York',s:'New York, USA',f:'🗽',la:40.7128,lo:-74.006},
+  {n:'Los Angeles',s:'California, USA',f:'🎬',la:34.0522,lo:-118.2437},
+  {n:'Miami',s:'Florida, USA',f:'🌊',la:25.7617,lo:-80.1918},
+  {n:'Chicago',s:'Illinois, USA',f:'🌆',la:41.8781,lo:-87.6298},
+  {n:'Las Vegas',s:'Nevada, USA',f:'🎰',la:36.1699,lo:-115.1398},
+  {n:'San Francisco',s:'California, USA',f:'🌉',la:37.7749,lo:-122.4194},
+  {n:'Seattle',s:'Washington, USA',f:'☕',la:47.6062,lo:-122.3321},
+  {n:'New Orleans',s:'Louisiana, USA',f:'🎺',la:29.9511,lo:-90.0715},
+  {n:'Washington DC',s:'USA',f:'🏛️',la:38.9072,lo:-77.0369},
+  {n:'Boston',s:'Massachusetts, USA',f:'🦞',la:42.3601,lo:-71.0589},
+  {n:'Nashville',s:'Tennessee, USA',f:'🎸',la:36.1627,lo:-86.7816},
+  {n:'Austin',s:'Texas, USA',f:'🤠',la:30.2672,lo:-97.7431},
+  {n:'Denver',s:'Colorado, USA',f:'⛰️',la:39.7392,lo:-104.9903},
+  {n:'Hawaii',s:'Hawaii, USA',f:'🌺',la:21.3069,lo:-157.8583},
+  {n:'Toronto',s:'Ontario, Canada',f:'🍁',la:43.6532,lo:-79.3832},
+  {n:'Vancouver',s:'BC, Canada',f:'🏔️',la:49.2827,lo:-123.1207},
+  {n:'Montreal',s:'Quebec, Canada',f:'🥐',la:45.5017,lo:-73.5673},
+  {n:'Cancun',s:'Mexico',f:'🏖️',la:21.1619,lo:-86.8515},
+  {n:'Mexico City',s:'Mexico',f:'🌮',la:19.4326,lo:-99.1332},
+  {n:'Havana',s:'Cuba',f:'🕺',la:23.1136,lo:-82.3666},
+  {n:'Costa Rica',s:'Central America',f:'🌿',la:9.9281,lo:-84.0907},
+  {n:'Panama City',s:'Panama',f:'🚢',la:8.9936,lo:-79.5197},
+  {n:'Bogota',s:'Colombia',f:'🌸',la:4.7110,lo:-74.0721},
+  {n:'Medellin',s:'Colombia',f:'🌺',la:6.2442,lo:-75.5812},
+  {n:'Cartagena',s:'Colombia',f:'🏰',la:10.3910,lo:-75.4794},
+  {n:'Rio de Janeiro',s:'Brazil',f:'🎭',la:-22.9068,lo:-43.1729},
+  {n:'Sao Paulo',s:'Brazil',f:'🌇',la:-23.5505,lo:-46.6333},
+  {n:'Buenos Aires',s:'Argentina',f:'💃',la:-34.6037,lo:-58.3816},
+  {n:'Lima',s:'Peru',f:'🦙',la:-12.0464,lo:-77.0428},
+  {n:'Cusco',s:'Peru',f:'🏔️',la:-13.5320,lo:-71.9675},
+  {n:'Santiago',s:'Chile',f:'🍷',la:-33.4489,lo:-70.6693},
+  {n:'Machu Picchu',s:'Peru',f:'🗿',la:-13.1631,lo:-72.5450},
+  {n:'Galapagos Islands',s:'Ecuador',f:'🐢',la:-0.9537,lo:-90.9656},
+  {n:'London',s:'England, UK',f:'👑',la:51.5074,lo:-0.1278},
+  {n:'Paris',s:'France',f:'🗼',la:48.8566,lo:2.3522},
+  {n:'Rome',s:'Italy',f:'🏛️',la:41.9028,lo:12.4964},
+  {n:'Barcelona',s:'Spain',f:'🎨',la:41.3851,lo:2.1734},
+  {n:'Madrid',s:'Spain',f:'💃',la:40.4168,lo:-3.7038},
+  {n:'Amsterdam',s:'Netherlands',f:'🚲',la:52.3676,lo:4.9041},
+  {n:'Berlin',s:'Germany',f:'🏰',la:52.5200,lo:13.4050},
+  {n:'Vienna',s:'Austria',f:'🎻',la:48.2082,lo:16.3738},
+  {n:'Prague',s:'Czech Republic',f:'🍺',la:50.0755,lo:14.4378},
+  {n:'Budapest',s:'Hungary',f:'♨️',la:47.4979,lo:19.0402},
+  {n:'Warsaw',s:'Poland',f:'🥟',la:52.2297,lo:21.0122},
+  {n:'Lisbon',s:'Portugal',f:'🏄',la:38.7223,lo:-9.1393},
+  {n:'Porto',s:'Portugal',f:'🍷',la:41.1579,lo:-8.6291},
+  {n:'Edinburgh',s:'Scotland, UK',f:'🏰',la:55.9533,lo:-3.1883},
+  {n:'Dublin',s:'Ireland',f:'🍀',la:53.3498,lo:-6.2603},
+  {n:'Zurich',s:'Switzerland',f:'🧀',la:47.3769,lo:8.5417},
+  {n:'Brussels',s:'Belgium',f:'🍫',la:50.8503,lo:4.3517},
+  {n:'Copenhagen',s:'Denmark',f:'🧜',la:55.6761,lo:12.5683},
+  {n:'Stockholm',s:'Sweden',f:'🦌',la:59.3293,lo:18.0686},
+  {n:'Oslo',s:'Norway',f:'🎿',la:59.9139,lo:10.7522},
+  {n:'Helsinki',s:'Finland',f:'🧖',la:60.1699,lo:24.9384},
+  {n:'Reykjavik',s:'Iceland',f:'🌋',la:64.1466,lo:-21.9426},
+  {n:'Santorini',s:'Greece',f:'🏛️',la:36.3932,lo:25.4615},
+  {n:'Athens',s:'Greece',f:'🏺',la:37.9838,lo:23.7275},
+  {n:'Mykonos',s:'Greece',f:'🌊',la:37.4467,lo:25.3289},
+  {n:'Amalfi Coast',s:'Italy',f:'🍋',la:40.6340,lo:14.6027},
+  {n:'Venice',s:'Italy',f:'🚤',la:45.4408,lo:12.3155},
+  {n:'Florence',s:'Italy',f:'🎨',la:43.7696,lo:11.2558},
+  {n:'Milan',s:'Italy',f:'👗',la:45.4654,lo:9.1859},
+  {n:'Nice',s:'France',f:'🌊',la:43.7102,lo:7.2620},
+  {n:'Monaco',s:'Monaco',f:'🏎️',la:43.7384,lo:7.4246},
+  {n:'Dubrovnik',s:'Croatia',f:'🏰',la:42.6507,lo:18.0944},
+  {n:'Seville',s:'Spain',f:'🌹',la:37.3891,lo:-5.9845},
+  {n:'Bruges',s:'Belgium',f:'🍺',la:51.2093,lo:3.2247},
+  {n:'Tallinn',s:'Estonia',f:'🏰',la:59.4370,lo:24.7536},
+  {n:'Krakow',s:'Poland',f:'🏰',la:50.0647,lo:19.9450},
+  {n:'Tokyo',s:'Japan',f:'🏯',la:35.6762,lo:139.6503},
+  {n:'Kyoto',s:'Japan',f:'⛩️',la:35.0116,lo:135.7681},
+  {n:'Osaka',s:'Japan',f:'🦀',la:34.6937,lo:135.5023},
+  {n:'Seoul',s:'South Korea',f:'🎎',la:37.5665,lo:126.9780},
+  {n:'Beijing',s:'China',f:'🐉',la:39.9042,lo:116.4074},
+  {n:'Shanghai',s:'China',f:'🌃',la:31.2304,lo:121.4737},
+  {n:'Hong Kong',s:'China',f:'🏙️',la:22.3193,lo:114.1694},
+  {n:'Singapore',s:'Singapore',f:'🦁',la:1.3521,lo:103.8198},
+  {n:'Bangkok',s:'Thailand',f:'🛺',la:13.7563,lo:100.5018},
+  {n:'Chiang Mai',s:'Thailand',f:'🐘',la:18.7883,lo:98.9853},
+  {n:'Bali',s:'Indonesia',f:'🌴',la:-8.3405,lo:115.0920},
+  {n:'Phuket',s:'Thailand',f:'🏖️',la:7.8804,lo:98.3923},
+  {n:'Hanoi',s:'Vietnam',f:'🛵',la:21.0285,lo:105.8542},
+  {n:'Ho Chi Minh City',s:'Vietnam',f:'🍜',la:10.8231,lo:106.6297},
+  {n:'Hoi An',s:'Vietnam',f:'🏮',la:15.8801,lo:108.3380},
+  {n:'Siem Reap',s:'Cambodia',f:'🏯',la:13.3671,lo:103.8448},
+  {n:'Kuala Lumpur',s:'Malaysia',f:'🌆',la:3.1390,lo:101.6869},
+  {n:'Manila',s:'Philippines',f:'🌺',la:14.5995,lo:120.9842},
+  {n:'Boracay',s:'Philippines',f:'🏝️',la:11.9674,lo:121.9248},
+  {n:'Taipei',s:'Taiwan',f:'🧋',la:25.0330,lo:121.5654},
+  {n:'Kathmandu',s:'Nepal',f:'🏔️',la:27.7172,lo:85.3240},
+  {n:'Colombo',s:'Sri Lanka',f:'🍵',la:6.9271,lo:79.8612},
+  {n:'Delhi',s:'India',f:'🕌',la:28.7041,lo:77.1025},
+  {n:'Mumbai',s:'India',f:'🎬',la:19.0760,lo:72.8777},
+  {n:'Goa',s:'India',f:'🏖️',la:15.2993,lo:74.1240},
+  {n:'Jaipur',s:'India',f:'🏰',la:26.9124,lo:75.7873},
+  {n:'Maldives',s:'Indian Ocean',f:'🏝️',la:3.2028,lo:73.2207},
+  {n:'Dubai',s:'UAE',f:'🏙️',la:25.2048,lo:55.2708},
+  {n:'Abu Dhabi',s:'UAE',f:'🕌',la:24.4539,lo:54.3773},
+  {n:'Doha',s:'Qatar',f:'⚽',la:25.2854,lo:51.5310},
+  {n:'Tel Aviv',s:'Israel',f:'🏖️',la:32.0853,lo:34.7818},
+  {n:'Istanbul',s:'Turkey',f:'🕌',la:41.0082,lo:28.9784},
+  {n:'Cappadocia',s:'Turkey',f:'🎈',la:38.6431,lo:34.8289},
+  {n:'Tbilisi',s:'Georgia',f:'🍷',la:41.7151,lo:44.8271},
+  {n:'Cairo',s:'Egypt',f:'🏺',la:30.0444,lo:31.2357},
+  {n:'Marrakech',s:'Morocco',f:'🕌',la:31.6295,lo:-7.9811},
+  {n:'Cape Town',s:'South Africa',f:'🦁',la:-33.9249,lo:18.4241},
+  {n:'Nairobi',s:'Kenya',f:'🦒',la:-1.2921,lo:36.8219},
+  {n:'Zanzibar',s:'Tanzania',f:'🏝️',la:-6.1659,lo:39.2026},
+  {n:'Serengeti',s:'Tanzania',f:'🦁',la:-2.3333,lo:34.8333},
+  {n:'Seychelles',s:'Indian Ocean',f:'🐢',la:-4.6796,lo:55.4920},
+  {n:'Mauritius',s:'Indian Ocean',f:'🏝️',la:-20.3484,lo:57.5522},
+  {n:'Sydney',s:'Australia',f:'🦘',la:-33.8688,lo:151.2093},
+  {n:'Melbourne',s:'Australia',f:'☕',la:-37.8136,lo:144.9631},
+  {n:'Auckland',s:'New Zealand',f:'🌿',la:-36.8509,lo:174.7645},
+  {n:'Queenstown',s:'New Zealand',f:'🎿',la:-45.0312,lo:168.6626},
+  {n:'Bora Bora',s:'French Polynesia',f:'💎',la:-16.5004,lo:-151.7415},
+  {n:'Fiji',s:'Pacific Islands',f:'🌺',la:-17.7134,lo:178.0650},
+  {n:'Jamaica',s:'Caribbean',f:'🎵',la:18.1096,lo:-77.2975},
+  {n:'Barbados',s:'Caribbean',f:'🐠',la:13.1939,lo:-59.5432},
+  {n:'Aruba',s:'Caribbean',f:'🌵',la:12.5211,lo:-69.9683},
+  {n:'Nassau',s:'Bahamas',f:'🏖️',la:25.0480,lo:-77.3554},
+  {n:'Puerto Rico',s:'Caribbean',f:'🌺',la:18.2208,lo:-66.5901},
+  {n:'Moscow',s:'Russia',f:'🏰',la:55.7558,lo:37.6173},
+  {n:'St. Petersburg',s:'Russia',f:'🎨',la:59.9311,lo:30.3609},
+  {n:'Petra',s:'Jordan',f:'🗿',la:30.3285,lo:35.4444}
+];
+
+var DAY_COLS = ['#38BDF8','#FB923C','#34D399','#F472B6','#FBBF24','#C084FC','#67E8F9'];
+
+var G = {
+  dest:null, destFlag:'✈️',
+  arrival:null, departure:null,
+  itin:null, curDay:0,
+  dateType:null,
+  calYear:new Date().getFullYear(),
+  calMonth:new Date().getMonth(),
+  tempDate:null
+};
+
+// ── GOOGLE MAP GLOBALS ──────────────────────────────────────────
+var gmap = null;
+var transitLayer = null;
+var activeMarkers = [];
+var currentLayerType = 'roadmap'; // roadmap | satellite | transit
+
+// Dark style for roadmap
+var DARK_STYLE = [
+  {elementType:'geometry',stylers:[{color:'#0a0f1e'}]},
+  {elementType:'labels.text.fill',stylers:[{color:'#8ec3b9'}]},
+  {elementType:'labels.text.stroke',stylers:[{color:'#1a3646'}]},
+  {featureType:'administrative.country',elementType:'geometry.stroke',stylers:[{color:'#4b6878'}]},
+  {featureType:'administrative.land_parcel',elementType:'labels.text.fill',stylers:[{color:'#64779e'}]},
+  {featureType:'administrative.province',elementType:'geometry.stroke',stylers:[{color:'#4b6878'}]},
+  {featureType:'landscape.man_made',elementType:'geometry.stroke',stylers:[{color:'#334e87'}]},
+  {featureType:'landscape.natural',elementType:'geometry',stylers:[{color:'#023e58'}]},
+  {featureType:'poi',elementType:'geometry',stylers:[{color:'#283d6a'}]},
+  {featureType:'poi',elementType:'labels.text.fill',stylers:[{color:'#6f9ba5'}]},
+  {featureType:'poi',elementType:'labels.text.stroke',stylers:[{color:'#1d2c4d'}]},
+  {featureType:'poi.park',elementType:'geometry.fill',stylers:[{color:'#023e58'}]},
+  {featureType:'poi.park',elementType:'labels.text.fill',stylers:[{color:'#3C7680'}]},
+  {featureType:'road',elementType:'geometry',stylers:[{color:'#304a7d'}]},
+  {featureType:'road',elementType:'labels.text.fill',stylers:[{color:'#98a5be'}]},
+  {featureType:'road',elementType:'labels.text.stroke',stylers:[{color:'#1d2c4d'}]},
+  {featureType:'road.highway',elementType:'geometry',stylers:[{color:'#2c6675'}]},
+  {featureType:'road.highway',elementType:'geometry.stroke',stylers:[{color:'#255763'}]},
+  {featureType:'road.highway',elementType:'labels.text.fill',stylers:[{color:'#b0d5ce'}]},
+  {featureType:'road.highway',elementType:'labels.text.stroke',stylers:[{color:'#023747'}]},
+  {featureType:'transit',elementType:'labels.text.fill',stylers:[{color:'#98a5be'}]},
+  {featureType:'transit',elementType:'labels.text.stroke',stylers:[{color:'#1d2c4d'}]},
+  {featureType:'transit.line',elementType:'geometry.fill',stylers:[{color:'#283d6a'}]},
+  {featureType:'transit.station',elementType:'geometry',stylers:[{color:'#3a4762'}]},
+  {featureType:'water',elementType:'geometry',stylers:[{color:'#0e1626'}]},
+  {featureType:'water',elementType:'labels.text.fill',stylers:[{color:'#4e6d70'}]}
+];
+
+// ── BOOT ───────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  bootClock();
+  bootSearch();
+  bootSheet();
+  bootIPanel();
+  loadGoogleMaps();
+});
+
+// ── CLOCK ──────────────────────────────────────────────────────
+function bootClock() {
+  function tick() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    document.getElementById('clockel').textContent =
+      (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  }
+  tick();
+  setInterval(tick, 10000);
+}
+
+// ── GOOGLE MAPS LOADER ─────────────────────────────────────────
+function loadGoogleMaps() {
+  // If API key is not set, show placeholder map background
+  if (GMAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
+    showFallbackMap();
+    return;
+  }
+  var script = document.createElement('script');
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + GMAPS_API_KEY
+             + '&callback=initGoogleMap&libraries=places';
+  script.async = true; script.defer = true;
+  script.onerror = function() { showFallbackMap(); };
+  document.head.appendChild(script);
+}
+
+function showFallbackMap() {
+  // Nice dark gradient fallback when no API key is set
+  var el = document.getElementById('gmap');
+  el.style.background =
+    'radial-gradient(ellipse at 30% 40%, #0d2137 0%, #050d1a 55%, #020810 100%)';
+  // Subtle grid overlay
+  el.style.backgroundImage =
+    'radial-gradient(ellipse at 30% 40%, #0d2137 0%, #050d1a 55%, #020810 100%),' +
+    'linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),' +
+    'linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px)';
+  el.style.backgroundSize = '100% 100%, 40px 40px, 40px 40px';
+  console.info('[Voyagr] Add your Google Maps API key to GMAPS_API_KEY to enable the live map.');
+}
+
+// Called by the Maps JS API after it loads
+window.initGoogleMap = function() {
+  gmap = new google.maps.Map(document.getElementById('gmap'), {
+    center: {lat: 20, lng: 0},
+    zoom: 3,
+    mapTypeId: 'roadmap',
+    styles: DARK_STYLE,
+    disableDefaultUI: true,
+    gestureHandling: 'greedy'
+  });
+
+  // Transit layer instance (toggled on/off)
+  transitLayer = new google.maps.TransitLayer();
+};
+
+// ── LAYER SWITCHING ────────────────────────────────────────────
+function switchLayer(type) {
+  // Update button states
+  ['roadmap','satellite','transit'].forEach(function(t) {
+    var ids = {roadmap:'lmap', satellite:'lsat', transit:'ltr'};
+    document.getElementById(ids[t]).classList.toggle('on', t === type);
+  });
+
+  currentLayerType = type;
+
+  if (!gmap) return; // map not loaded yet (no API key), just update UI
+
+  // Remove transit layer first in all cases
+  if (transitLayer) transitLayer.setMap(null);
+
+  if (type === 'roadmap') {
+    gmap.setMapTypeId('roadmap');
+    gmap.setOptions({styles: DARK_STYLE});
+  } else if (type === 'satellite') {
+    gmap.setMapTypeId('hybrid'); // hybrid = satellite + labels
+    gmap.setOptions({styles: []}); // styles don't apply to satellite, clear them
+  } else if (type === 'transit') {
+    gmap.setMapTypeId('roadmap');
+    gmap.setOptions({styles: DARK_STYLE});
+    if (transitLayer) transitLayer.setMap(gmap); // overlay transit on dark roadmap
+  }
+}
+
+// ── DAY BAR ────────────────────────────────────────────────────
+function updateDayBar(idx, total) {
+  var col = DAY_COLS[idx % DAY_COLS.length];
+  document.getElementById('ddot').style.background = col;
+  document.getElementById('dtxt').textContent = total > 1 ? 'Day '+(idx+1)+' of '+total : 'Day 1';
+  var prev = document.getElementById('dprev');
+  var next = document.getElementById('dnext');
+  prev.disabled = (idx === 0);
+  next.disabled = (total <= 1 || idx >= total - 1);
+  prev.style.color = prev.disabled ? '' : DAY_COLS[Math.max(0,idx-1) % DAY_COLS.length];
+  next.style.color = next.disabled ? '' : DAY_COLS[(idx+1) % DAY_COLS.length];
+}
+
+function shiftDay(dir) {
+  if (!G.itin) return;
+  var total = G.itin.numDays;
+  var n = G.curDay + dir;
+  if (n < 0 || n >= total) return;
+  G.curDay = n;
+  updateDayBar(n, total);
+  renderFlags(n);
+  renderEvents(n);
+  syncPills(n);
+}
+
+// ────────────────────────────────────────────────────────────────
+// BOTTOM SHEET — rebuilt drag system
+// ────────────────────────────────────────────────────────────────
+function bootSheet() {
+  var sheet   = document.getElementById('bsheet');
+  var peek    = document.getElementById('bpeek');   // drag target
+  var content = document.getElementById('scontent');
+
+  // Heights relative to window
+  function PEEK_H() {
+    // Only the peek zone (handle + search bar) sticks out
+    return peek.offsetHeight || 80;
+  }
+  function HALF_H() { return Math.round(window.innerHeight * 0.52); }
+  function FULL_H() { return Math.round(window.innerHeight * 0.92); }
+  // translateY value = window.innerHeight - visible height
+  function PEEK_Y() { return window.innerHeight - PEEK_H(); }
+  function HALF_Y() { return window.innerHeight - HALF_H(); }
+  function FULL_Y() { return window.innerHeight - FULL_H(); }
+
+  var curY = null;
+  var isDragging = false, holdTimer = null;
+  var startClientY, startSheetY, velY, lastClientY, lastTime;
+
+  function setY(y, animate) {
+    if (animate) {
+      sheet.classList.add('snap');
+    } else {
+      sheet.classList.remove('snap');
+    }
+    curY = Math.max(FULL_Y(), Math.min(PEEK_Y(), y));
+    sheet.style.transform = 'translateY(' + curY + 'px)';
+    // Enable scroll only when sheet is near full height
+    content.style.overflowY = (curY <= HALF_Y() + 20) ? 'auto' : 'hidden';
+  }
+
+  function snapTo(vel) {
+    var py = PEEK_Y(), hy = HALF_Y(), fy = FULL_Y();
+    var target;
+    if (vel < -0.6) {
+      // Flicked up
+      target = curY > hy ? hy : fy;
+    } else if (vel > 0.6) {
+      // Flicked down
+      target = curY < hy ? hy : py;
+    } else {
+      // Find nearest snap point
+      var pts = [fy, hy, py];
+      target = pts.reduce(function(a, b) {
+        return Math.abs(b - curY) < Math.abs(a - curY) ? b : a;
+      });
+    }
+    setY(target, true);
+  }
+
+  function onStart(clientY) {
+    isDragging = true;
+    startClientY = clientY;
+    startSheetY  = curY !== null ? curY : PEEK_Y();
+    velY = 0; lastClientY = clientY; lastTime = Date.now();
+    sheet.classList.remove('snap');
+  }
+
+  function onMove(clientY) {
+    if (!isDragging) return;
+    var now = Date.now(), dt = Math.max(1, now - lastTime);
+    velY = (clientY - lastClientY) / dt;
+    lastClientY = clientY; lastTime = now;
+    setY(startSheetY + (clientY - startClientY), false);
+  }
+
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    snapTo(velY);
+  }
+
+  // Initialise to peek position after layout settles
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      setY(PEEK_Y(), false);
+    });
+  });
+
+  // ── Pointer events on the peek zone (handle + search row) ──
+  peek.addEventListener('mousedown', function(e) {
+    // Don't start drag if clicking the search bar itself
+    if (e.target.closest('.spbar') || e.target.closest('.ava')) return;
+    holdTimer = setTimeout(function() { onStart(e.clientY); }, 60);
+  });
+  document.addEventListener('mousemove', function(e) { onMove(e.clientY); });
+  document.addEventListener('mouseup', function() {
+    clearTimeout(holdTimer);
+    onEnd();
+  });
+
+  peek.addEventListener('touchstart', function(e) {
+    if (e.target.closest('.spbar') || e.target.closest('.ava')) return;
+    var ty = e.touches[0].clientY;
+    holdTimer = setTimeout(function() { onStart(ty); }, 60);
+  }, {passive:true});
+  peek.addEventListener('touchmove', function(e) {
+    if (!isDragging) return;
+    onMove(e.touches[0].clientY);
+    e.preventDefault();
+  }, {passive:false});
+  peek.addEventListener('touchend', function() {
+    clearTimeout(holdTimer);
+    var was = isDragging;
+    onEnd();
+    // If it was just a tap (not a drag), toggle between peek and half
+    if (!was) {
+      if (curY !== null) setY(curY >= HALF_Y() - 10 ? HALF_Y() : PEEK_Y(), true);
+    }
+  });
+
+  // Tap on handle pill always toggles
+  document.getElementById('shandle').addEventListener('click', function() {
+    if (isDragging) return;
+    if (curY !== null) setY(curY >= HALF_Y() - 10 ? HALF_Y() : PEEK_Y(), true);
+  });
+}
+
+// ── ITIN PANEL ─────────────────────────────────────────────────
+var _iPanelSetY = null;
+
+function bootIPanel() {
+  var panel    = document.getElementById('ipanel');
+  var handle   = document.getElementById('ihandle');
+  var eventsEl = document.getElementById('ievents');
+  var curY = null;
+  var isDragging = false, holdTimer = null;
+  var sCY, sSY, velY, lastCY, lastT;
+
+  function COLL() { return window.innerHeight - 82; }
+  function OPEN() { return Math.round(window.innerHeight * 0.22); }
+
+  function setY(y, anim) {
+    panel.classList.toggle('notr', !anim);
+    curY = Math.max(OPEN(), Math.min(COLL(), y));
+    panel.style.transform = 'translateY(' + curY + 'px)';
+    eventsEl.style.overflowY = (curY < OPEN() + 80) ? 'auto' : 'hidden';
+  }
+  _iPanelSetY = setY;
+
+  function snap(vel) {
+    var mid = (COLL() + OPEN()) / 2;
+    setY((vel < -0.4 || curY < mid) ? OPEN() : COLL(), true);
+  }
+  function startDrag(cy) {
+    isDragging = true;
+    sCY = cy; sSY = curY !== null ? curY : COLL();
+    velY = 0; lastCY = cy; lastT = Date.now();
+  }
+
+  handle.addEventListener('mousedown', function(e) {
+    holdTimer = setTimeout(function() { startDrag(e.clientY); }, 80);
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    var now = Date.now(), dt = Math.max(1, now - lastT);
+    velY = (e.clientY - lastCY) / dt; lastCY = e.clientY; lastT = now;
+    setY(sSY + e.clientY - sCY, false);
+  });
+  document.addEventListener('mouseup', function() {
+    clearTimeout(holdTimer);
+    if (isDragging) { isDragging = false; snap(velY); }
+  });
+  handle.addEventListener('click', function() {
+    if (isDragging) return;
+    if (curY !== null) { var mid = (COLL()+OPEN())/2; setY(curY < mid ? COLL() : OPEN(), true); }
+  });
+  handle.addEventListener('touchstart', function(e) {
+    var ty = e.touches[0].clientY;
+    holdTimer = setTimeout(function() { startDrag(ty); }, 80);
+  }, {passive:true});
+  handle.addEventListener('touchmove', function(e) {
+    if (!isDragging) return;
+    var t = e.touches[0], now = Date.now(), dt = Math.max(1, now - lastT);
+    velY = (t.clientY - lastCY) / dt; lastCY = t.clientY; lastT = now;
+    setY(sSY + t.clientY - sCY, false);
+    e.preventDefault();
+  }, {passive:false});
+  handle.addEventListener('touchend', function() {
+    clearTimeout(holdTimer);
+    var was = isDragging;
+    if (isDragging) { isDragging = false; snap(velY); }
+    if (!was && curY !== null) { var mid = (COLL()+OPEN())/2; setY(curY < mid ? COLL() : OPEN(), true); }
+  });
+}
+
+function openIPanel() {
+  if (_iPanelSetY) _iPanelSetY(Math.round(window.innerHeight * 0.22), true);
+}
+function closeIPanel() {
+  if (_iPanelSetY) _iPanelSetY(window.innerHeight - 82, true);
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────
+function bootSearch() {
+  document.getElementById('sovin').addEventListener('input', function() {
+    renderResults(this.value);
+  });
+}
+function openSearch() {
+  document.getElementById('sovl').classList.add('open');
+  renderResults('');
+  setTimeout(function() { document.getElementById('sovin').focus(); }, 80);
+}
+function closeSearch() {
+  document.getElementById('sovl').classList.remove('open');
+  document.getElementById('sovin').value = '';
+}
+function renderResults(q) {
+  q = q ? q.toLowerCase().trim() : '';
+  var list = q
+    ? DESTS.filter(function(d) { return d.n.toLowerCase().indexOf(q)>-1 || d.s.toLowerCase().indexOf(q)>-1; })
+    : DESTS;
+  var container = document.getElementById('sresults');
+  container.innerHTML = '';
+  list.slice(0, 80).forEach(function(d) {
+    var el = document.createElement('div');
+    el.className = 'sitem';
+    el.innerHTML = '<div class="sflag">'+d.f+'</div><div><div class="sname">'+d.n+'</div><div class="ssub">'+d.s+'</div></div>';
+    (function(dest) { el.addEventListener('click', function() { quickDest(dest.n, dest.f); }); })(d);
+    container.appendChild(el);
+  });
+}
+function quickDest(name, flag) {
+  G.dest = name; G.destFlag = flag || '✈️';
+  closeSearch();
+  openPlan(name);
+}
+
+// ── PLAN ───────────────────────────────────────────────────────
+function openPlan(name) {
+  document.getElementById('plname').textContent = name;
+  document.getElementById('planscr').classList.add('open');
+  document.getElementById('buildbtn').classList.add('show');
+  G.arrival = null; G.departure = null;
+  document.getElementById('arrval').textContent = 'Select date';
+  document.getElementById('arrval').className = 'ival ph';
+  document.getElementById('depval').textContent = 'Select date';
+  document.getElementById('depval').className = 'ival ph';
+  document.getElementById('dateerr').style.display = 'none';
+  document.getElementById('arrbox').classList.remove('error');
+  document.getElementById('depbox').classList.remove('error');
+  document.querySelectorAll('.cchip').forEach(function(c) {
+    c.classList.remove('on');
+    c.querySelector('.cbox').textContent = '';
+  });
+}
+function closePlan() {
+  document.getElementById('planscr').classList.remove('open');
+  document.getElementById('buildbtn').classList.remove('show');
+}
+function togChk(el) {
+  el.classList.toggle('on');
+  el.querySelector('.cbox').textContent = el.classList.contains('on') ? '✓' : '';
+}
+
+// ── DATE MODAL ─────────────────────────────────────────────────
+function openDateModal(type) {
+  G.dateType = type;
+  if (type === 'dep' && G.arrival) {
+    G.calYear = G.arrival.getFullYear();
+    G.calMonth = G.arrival.getMonth();
+  } else {
+    G.calYear = new Date().getFullYear();
+    G.calMonth = new Date().getMonth();
+  }
+  G.tempDate = null;
+  document.getElementById('dtitle').textContent = type === 'arr' ? 'Select Arrival Date' : 'Select Departure Date';
+  renderCal();
+  document.getElementById('dmodal').classList.add('open');
+}
+function closeDModal(e) {
+  if (e.target === document.getElementById('dmodal')) document.getElementById('dmodal').classList.remove('open');
+}
+function changeMonth(d) {
+  G.calMonth += d;
+  if (G.calMonth > 11) { G.calMonth = 0; G.calYear++; }
+  if (G.calMonth < 0)  { G.calMonth = 11; G.calYear--; }
+  renderCal();
+}
+function renderCal() {
+  var MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('mlbl').textContent = MN[G.calMonth] + ' ' + G.calYear;
+  var grid = document.getElementById('calgrid');
+  grid.innerHTML = '';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(function(d) {
+    var h = document.createElement('div'); h.className='caldh'; h.textContent=d; grid.appendChild(h);
+  });
+  var first = new Date(G.calYear, G.calMonth, 1).getDay();
+  var daysInMonth = new Date(G.calYear, G.calMonth+1, 0).getDate();
+  var today = new Date(); today.setHours(0,0,0,0);
+  var minDate = (G.dateType === 'dep' && G.arrival) ? new Date(G.arrival.getTime() + 86400000) : today;
+  for (var i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
+  for (var day = 1; day <= daysInMonth; day++) {
+    (function(d) {
+      var dt = new Date(G.calYear, G.calMonth, d);
+      var el = document.createElement('div');
+      el.className = 'cald'; el.textContent = d;
+      if (dt < minDate) {
+        el.classList.add('dis');
+      } else {
+        if (G.tempDate && G.tempDate.getTime() === dt.getTime()) el.classList.add('sel');
+        el.addEventListener('click', function() {
+          grid.querySelectorAll('.cald').forEach(function(x){ x.classList.remove('sel'); });
+          el.classList.add('sel'); G.tempDate = dt;
+        });
+      }
+      grid.appendChild(el);
+    })(day);
+  }
+}
+function confirmDate() {
+  if (!G.tempDate) { document.getElementById('dmodal').classList.remove('open'); return; }
+  var fmt = G.tempDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+  if (G.dateType === 'arr') {
+    G.arrival = G.tempDate;
+    document.getElementById('arrval').textContent = fmt;
+    document.getElementById('arrval').className = 'ival';
+    document.getElementById('arrbox').classList.remove('error');
+    if (G.departure && G.departure <= G.arrival) {
+      G.departure = null;
+      document.getElementById('depval').textContent = 'Select date';
+      document.getElementById('depval').className = 'ival ph';
+    }
+  } else {
+    if (G.arrival && G.tempDate <= G.arrival) {
+      document.getElementById('depbox').classList.add('error');
+      document.getElementById('dateerr').style.display = 'block';
+      setTimeout(function(){ document.getElementById('depbox').classList.remove('error'); }, 600);
+      G.tempDate = null;
+      document.getElementById('dmodal').classList.remove('open');
+      return;
+    }
+    G.departure = G.tempDate;
+    document.getElementById('depval').textContent = fmt;
+    document.getElementById('depval').className = 'ival';
+    document.getElementById('depbox').classList.remove('error');
+    document.getElementById('dateerr').style.display = 'none';
+  }
+  G.tempDate = null;
+  document.getElementById('dmodal').classList.remove('open');
+}
+
+// ── ITINERARY TEMPLATES ────────────────────────────────────────
+var ITPL = [
+  [{t:'8:00 AM',n:'✈️ Arrival & Check-In',d:'Land and transfer to your hotel. Settle in and freshen up.',tag:'TRAVEL'},{t:'11:00 AM',n:'🍳 Welcome Breakfast',d:'Enjoy a welcome breakfast at a great local spot.',tag:'DINING'},{t:'1:00 PM',n:'🗺️ Orientation Walk',d:'Explore the neighbourhood around your hotel on foot.',tag:'EXPLORE'},{t:'3:30 PM',n:'🏛️ Landmark Visit',d:'Head to the city\'s most iconic attraction.',tag:'SIGHTSEEING'},{t:'7:00 PM',n:'🍽️ Welcome Dinner',d:'Reservation at a top-rated local restaurant.',tag:'DINING'}],
+  [{t:'7:30 AM',n:'☀️ Morning Jog',d:'Start active — hotel gym or a nearby park.',tag:'WELLNESS'},{t:'9:00 AM',n:'🥐 Cafe Breakfast',d:'Try a local café for an authentic morning experience.',tag:'DINING'},{t:'11:00 AM',n:'🎨 Museum / Gallery',d:'Visit the city\'s premier cultural institution.',tag:'CULTURE'},{t:'2:00 PM',n:'🛍️ Market Tour',d:'Browse artisanal goods, street food, and local crafts.',tag:'SHOPPING'},{t:'5:00 PM',n:'🌅 Sunset Viewpoint',d:'Head to the best vantage point for golden hour.',tag:'SIGHTSEEING'},{t:'8:00 PM',n:'🍸 Rooftop Bar',d:'End the evening with cocktails and skyline views.',tag:'NIGHTLIFE'}],
+  [{t:'8:00 AM',n:'🌿 Nature Excursion',d:'Day trip to surrounding nature or coastline.',tag:'ADVENTURE'},{t:'12:00 PM',n:'🥙 Picnic Lunch',d:'Pack a local spread and enjoy it amid nature.',tag:'DINING'},{t:'3:00 PM',n:'🤿 Activity Session',d:'Choose kayaking, hiking, cycling, or a workshop.',tag:'ADVENTURE'},{t:'7:00 PM',n:'🐟 Seafood Dinner',d:'Local harbour restaurant with the freshest catch.',tag:'DINING'}],
+  [{t:'9:00 AM',n:'🏘️ Hidden Neighbourhood',d:'Discover secret gems, alleyways, murals, local life.',tag:'EXPLORE'},{t:'11:30 AM',n:'☕ Specialty Coffee',d:'A trendy specialty coffee spot.',tag:'LEISURE'},{t:'1:00 PM',n:'🍜 Food Tour',d:'Guided tasting tour of 5 top-rated local eateries.',tag:'DINING'},{t:'4:00 PM',n:'🛳️ Boat Tour',d:'See the city from the water on a 90-minute cruise.',tag:'SIGHTSEEING'},{t:'8:30 PM',n:'🎭 Evening Show',d:'Live music, theater, or cultural performance.',tag:'CULTURE'}],
+  [{t:'8:30 AM',n:'🏖️ Beach Morning',d:'Enjoy a relaxed morning at the best local beach.',tag:'LEISURE'},{t:'11:00 AM',n:'🧴 Spa & Wellness',d:'Book a local spa treatment or yoga class.',tag:'WELLNESS'},{t:'1:30 PM',n:'🍹 Lunch by the Sea',d:'Fresh cuisine at a beachfront restaurant.',tag:'DINING'},{t:'4:00 PM',n:'📸 Photography Walk',d:'Golden hour stroll through the most photogenic spots.',tag:'EXPLORE'},{t:'7:30 PM',n:'🥂 Fine Dining',d:'Special dinner at the most celebrated restaurant.',tag:'DINING'}],
+  [{t:'9:00 AM',n:'🧳 Check-Out',d:'Pack your bags and check out of the hotel.',tag:'TRAVEL'},{t:'11:00 AM',n:'🛒 Final Shopping',d:'Pick up souvenirs and final gifts.',tag:'SHOPPING'},{t:'1:00 PM',n:'🍽️ Farewell Lunch',d:'Final meal at your favourite spot from the trip.',tag:'DINING'},{t:'3:30 PM',n:'✈️ Departure',d:'Head to the airport. Safe travels!',tag:'TRAVEL'}]
+];
+
+// ── BUILD ──────────────────────────────────────────────────────
+function startBuild() {
+  if (!G.arrival || !G.departure) {
+    var a = new Date(); a.setDate(a.getDate()+7); a.setHours(0,0,0,0);
+    var b = new Date(); b.setDate(b.getDate()+12); b.setHours(0,0,0,0);
+    G.arrival = a; G.departure = b;
+  }
+  document.getElementById('loader').classList.add('show');
+  setTimeout(function() {
+    document.getElementById('loader').classList.remove('show');
+    compileTrip();
+  }, 1700);
+}
+
+function compileTrip() {
+  var dest = G.dest || 'Miami';
+  var numDays = Math.max(1, Math.round((G.departure - G.arrival) / 86400000) + 1);
+
+  G.itin = {dest:dest, numDays:numDays, arrival:G.arrival, departure:G.departure, days:[]};
+  for (var i = 0; i < numDays; i++) G.itin.days.push({events: ITPL[i % ITPL.length]});
+  G.curDay = 0;
+
+  closePlan();
+  document.getElementById('bsheet').classList.add('hidden');
+  document.getElementById('daybar').style.display = 'flex';
+  document.getElementById('tripbar').classList.add('show');
+  document.getElementById('ipanel').classList.add('show');
+
+  var fmt = function(d){ return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  document.getElementById('tbdest').textContent  = G.destFlag + ' ' + dest;
+  document.getElementById('tbdates').textContent = fmt(G.arrival) + ' → ' + fmt(G.departure);
+  document.getElementById('icity').textContent   = dest;
+  document.getElementById('idates').textContent  = fmt(G.arrival) + ' – ' + fmt(G.departure);
+  document.getElementById('inum').textContent    = numDays;
+
+  var pillsEl = document.getElementById('ipills');
+  pillsEl.innerHTML = '';
+  for (var j = 0; j < numDays; j++) {
+    (function(idx) {
+      var p = document.createElement('div');
+      p.className = 'ipill';
+      var c = DAY_COLS[idx % DAY_COLS.length];
+      if (idx === 0) { p.style.borderColor=c; p.style.color=c; p.style.background=c+'22'; }
+      p.textContent = 'Day ' + (idx+1);
+      p.addEventListener('click', function() {
+        G.curDay = idx;
+        updateDayBar(idx, numDays);
+        syncPills(idx);
+        renderFlags(idx);
+        renderEvents(idx);
+      });
+      pillsEl.appendChild(p);
+    })(j);
+  }
+
+  updateDayBar(0, numDays);
+
+  // Fly map to destination
+  var found = DESTS.filter(function(d){ return d.n === dest; })[0];
+  if (found && gmap) {
+    gmap.panTo({lat: found.la, lng: found.lo});
+    gmap.setZoom(12);
+  }
+
+  renderFlags(0);
+  renderEvents(0);
+  setTimeout(function(){ closeIPanel(); }, 400);
+}
+
+function syncPills(idx) {
+  document.querySelectorAll('.ipill').forEach(function(p, i) {
+    var c = DAY_COLS[i % DAY_COLS.length];
+    if (i === idx) { p.style.borderColor=c; p.style.color=c; p.style.background=c+'22'; }
+    else { p.style.borderColor=''; p.style.color=''; p.style.background=''; }
+  });
+}
+
+// ── MAP FLAGS (Google Maps Advanced Markers) ───────────────────
+var OFF = [[0,0],[0.007,-0.009],[0.010,0.006],[-0.007,0.012],[0.015,-0.004],[-0.012,-0.008],[0.003,0.016],[0.018,0.010]];
+
+function firstEmoji(str) {
+  var m = str.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+  if (m) return m[0];
+  return Array.from(str)[0] || '📍';
+}
+
+function renderFlags(dayIdx) {
+  // Clear old markers
+  activeMarkers.forEach(function(m) {
+    if (m.setMap) m.setMap(null);
+  });
+  activeMarkers = [];
+
+  if (!G.itin || !gmap) return;
+
+  var day  = G.itin.days[dayIdx];
+  var col  = DAY_COLS[dayIdx % DAY_COLS.length];
+  var found = DESTS.filter(function(d){ return d.n === G.itin.dest; })[0];
+  var bla  = found ? found.la : 20;
+  var blo  = found ? found.lo : 0;
+
+  day.events.forEach(function(ev, i) {
+    var off   = OFF[i % OFF.length];
+    var emoji = firstEmoji(ev.n);
+    var label = ev.n.replace(emoji, '').trim().substring(0, 14);
+    var lat   = bla + off[0];
+    var lng   = blo + off[1];
+
+    // Build the pin DOM element
+    var pin = document.createElement('div');
+    pin.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
+    pin.innerHTML =
+      '<div style="background:'+col+';color:#000;border-radius:6px 6px 0 0;padding:3px 9px;font-size:10px;font-weight:700;font-family:Sora,sans-serif;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4);">'
+      + emoji + ' ' + label
+      + '</div>'
+      + '<div style="width:2px;height:16px;background:'+col+';"></div>'
+      + '<div style="width:8px;height:8px;border-radius:50%;background:'+col+';box-shadow:0 0 10px 3px '+col+'88;"></div>';
+
+    var marker;
+    // Use AdvancedMarkerElement if available (Maps JS API v3.55+)
+    if (google && google.maps && google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+      marker = new google.maps.marker.AdvancedMarkerElement({
+        map: gmap,
+        position: {lat: lat, lng: lng},
+        content: pin
+      });
+      marker.addListener('click', openIPanel);
+    } else {
+      // Fallback to classic Marker with custom icon overlay
+      marker = new google.maps.Marker({
+        map: gmap,
+        position: {lat: lat, lng: lng},
+        icon: {url:'data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><circle cx="4" cy="4" r="4" fill="'+encodeURIComponent(col)+'"/></svg>', anchor: new google.maps.Point(4,4)}
+      });
+      // Attach info window as a substitute for the styled pin
+      var iw = new google.maps.InfoWindow({content: pin});
+      marker.addListener('click', function(){ iw.open(gmap, marker); openIPanel(); });
+    }
+    activeMarkers.push(marker);
+  });
+}
+
+// ── EVENTS LIST ────────────────────────────────────────────────
+function renderEvents(dayIdx) {
+  var day = G.itin.days[dayIdx];
+  var col = DAY_COLS[dayIdx % DAY_COLS.length];
+  var container = document.getElementById('ievents');
+  container.innerHTML = '';
+  day.events.forEach(function(ev, i) {
+    var el = document.createElement('div');
+    el.className = 'iev';
+    el.style.animationDelay = (i * 0.06) + 's';
+    el.innerHTML =
+      '<div class="etime">'+ev.t+'</div>'
+      +'<div class="espine"><div class="edot" style="background:'+col+';border-color:'+col+';box-shadow:0 0 6px '+col+'77;"></div>'
+      +(i < day.events.length-1 ? '<div class="eline"></div>' : '')
+      +'</div><div class="einfo"><div class="ename">'+ev.n+'</div>'
+      +'<div class="edesc">'+ev.d+'</div>'
+      +'<span class="etag" style="background:'+col+'22;color:'+col+';">'+ev.tag+'</span></div>';
+    container.appendChild(el);
+  });
+}
+</script>
+
+<!-- Load Google Maps after page is ready -->
+<script>
+// Dynamically inject the Maps script after key is set
+(function() {
+  if (GMAPS_API_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+    var s = document.createElement('script');
+    s.src = 'https://maps.googleapis.com/maps/api/js?key=' + GMAPS_API_KEY
+           + '&callback=initGoogleMap&libraries=places,marker&v=beta';
+    s.async = true; s.defer = true;
+    s.onerror = showFallbackMap;
+    document.head.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>
